@@ -1,7 +1,10 @@
-function add(a: number, b: number): number {
-    return a + b;
+function max(a: number, b: number): number {
+    if (a > b) {
+        return a;
+    } else {
+        return b;
+    }
 }
 
-let result = add(10, 20);
-
-console.log(result);
+let result = max(10, 20);
+console.log(result + 100);

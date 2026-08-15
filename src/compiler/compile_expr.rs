@@ -1,27 +1,30 @@
-use crate::compiler::compiler::Compiler;
+use super::compiler::{Compiler, Vars, to_var};
 use anyhow::anyhow;
 use melior::dialect::arith;
 use melior::ir::attribute::IntegerAttribute;
 use melior::ir::{Block, BlockLike, Value};
-use std::collections::HashMap;
 use swc_ecma_ast::{Callee, Expr, ExprOrSpread, Lit, MemberProp};
 
 impl<'c> Compiler<'c> {
-    pub(super) fn compile_expr<'a>(
+    pub(super) fn compile_expr(
         &mut self,
-        block: &'a Block<'c>,
+        block: &Block<'c>,
         expr: &Expr,
-        vars: &HashMap<String, Value<'c, 'a>>,
-    ) -> anyhow::Result<Value<'c, 'a>> {
+        vars: &Vars<'c>,
+    ) -> anyhow::Result<Value<'c, 'c>> {
         match expr {
-            Expr::Lit(Lit::Num(num)) => Ok(block
-                .append_operation(arith::constant(
-                    self.context,
-                    IntegerAttribute::new(self.i64_type, num.value as i64).into(),
-                    self.location,
-                ))
-                .result(0)?
-                .into()),
+            Expr::Lit(Lit::Num(num)) => Ok(unsafe {
+                to_var(
+                    block
+                        .append_operation(arith::constant(
+                            self.context,
+                            IntegerAttribute::new(self.i64_type, num.value as i64).into(),
+                            self.location,
+                        ))
+                        .result(0)?
+                        .into(),
+                )
+            }),
             Expr::Ident(ident) => vars
                 .get(ident.sym.as_ref())
                 .copied()

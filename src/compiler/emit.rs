@@ -32,6 +32,7 @@ pub fn emit(module: &Module, output: &Path) -> Result<()> {
 
     let pass_manager = PassManager::new(&context);
     pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
     pass_manager.add_pass(pass::conversion::create_func_to_llvm());
     pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
     pass_manager

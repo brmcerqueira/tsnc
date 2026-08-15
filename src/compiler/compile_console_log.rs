@@ -1,4 +1,4 @@
-use crate::compiler::compiler::Compiler;
+use super::compiler::{Compiler, to_var};
 use anyhow::anyhow;
 use melior::dialect::llvm::attributes::{Linkage, linkage};
 use melior::dialect::llvm::r#type::{array, function};
@@ -12,11 +12,11 @@ use melior::ir::r#type::IntegerType;
 use melior::ir::{Attribute, Block, BlockLike, Identifier, Region, Type, Value};
 
 impl<'c> Compiler<'c> {
-    pub(super) fn compile_console_log<'a>(
+    pub(super) fn compile_console_log(
         &mut self,
-        block: &'a Block<'c>,
-        args: &[Value<'c, 'a>],
-    ) -> anyhow::Result<Value<'c, 'a>> {
+        block: &Block<'c>,
+        args: &[Value<'c, 'c>],
+    ) -> anyhow::Result<Value<'c, 'c>> {
         if args.len() != 1 {
             return Err(anyhow!("console.log expects exactly one argument"));
         }
@@ -32,7 +32,8 @@ impl<'c> Compiler<'c> {
                 .into(),
         );
 
-        let operands: &[Value<'c, 'a>] = &[fmt_ptr.result(0)?.into(), args[0]];
+        let fmt_ptr = unsafe { to_var(fmt_ptr.result(0)?.into()) };
+        let operands: &[Value<'c, 'c>] = &[fmt_ptr, args[0]];
         block.append_operation(
             OperationBuilder::new("llvm.call", self.location)
                 .add_operands(operands)

@@ -2,9 +2,15 @@ use super::is_void_function::is_void_function;
 use melior::Context;
 use melior::dialect::llvm::r#type::pointer;
 use melior::ir::r#type::IntegerType;
-use melior::ir::{Location, Module as MlirModule, Type};
+use melior::ir::{Location, Module as MlirModule, Type, Value};
 use std::collections::HashMap;
 use swc_ecma_ast::{Decl, Module, ModuleItem, Stmt};
+
+pub(super) type Vars<'c> = HashMap<String, Value<'c, 'c>>;
+
+pub(super) unsafe fn to_var<'c, 'a>(val: Value<'c, 'a>) -> Value<'c, 'c> {
+    unsafe { std::mem::transmute(val) }
+}
 
 pub(super) struct Compiler<'c> {
     pub(super) context: &'c Context,
@@ -16,6 +22,7 @@ pub(super) struct Compiler<'c> {
     pub(super) fn_returns: HashMap<String, bool>,
     pub(super) printf_declared: bool,
     pub(super) format_declared: bool,
+    pub(super) pending_blocks: Vec<melior::ir::Block<'c>>,
 }
 
 impl<'c> Compiler<'c> {
@@ -43,6 +50,7 @@ impl<'c> Compiler<'c> {
             fn_returns,
             printf_declared: false,
             format_declared: false,
+            pending_blocks: vec![],
         }
     }
 }

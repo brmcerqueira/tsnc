@@ -1,27 +1,44 @@
-use crate::compiler::compiler::Compiler;
+use crate::compiler::compiler::{Compiler, Vars};
+use crate::compiler::stmt_control::StmtControl;
 use melior::dialect::func::{func, r#return};
 use melior::ir::attribute::{StringAttribute, TypeAttribute};
 use melior::ir::r#type::FunctionType;
 use melior::ir::{Block, BlockLike, Region, RegionLike};
-use std::collections::HashMap;
 use swc_ecma_ast::Stmt;
 
 impl<'c> Compiler<'c> {
     pub(super) fn compile_main_entry(&mut self, stmts: &[&Stmt]) -> anyhow::Result<()> {
-        let block = Block::new(&[]);
-        let mut vars = HashMap::new();
+        let mut all_blocks: Vec<Block<'c>> = vec![];
+        let mut current = Block::new(&[]);
+        let mut vars: Vars<'c> = std::collections::HashMap::new();
+        let mut terminated = false;
 
         for stmt in stmts {
-            if self.compile_stmt(&block, stmt, &mut vars)? {
-                break;
+            match self.compile_stmt(&current, stmt, &mut vars)? {
+                StmtControl::Continue => {}
+                StmtControl::Terminated => {
+                    terminated = true;
+                    break;
+                }
+                StmtControl::Branch(merge) => {
+                    all_blocks.push(std::mem::replace(&mut current, merge));
+                }
             }
         }
 
-        let zero = self.zero_i32(&block);
-        block.append_operation(r#return(&[zero], self.location));
+        if !terminated {
+            let zero = self.zero_i32(&current);
+            current.append_operation(r#return(&[zero], self.location));
+        }
+        all_blocks.push(current);
 
         let region = Region::new();
-        region.append_block(block);
+        for b in all_blocks {
+            region.append_block(b);
+        }
+        for b in self.pending_blocks.drain(..) {
+            region.append_block(b);
+        }
         self.mlir_module.body().append_operation(func(
             self.context,
             StringAttribute::new(self.context, "main"),

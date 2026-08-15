@@ -1,17 +1,17 @@
-use crate::compiler::compiler::Compiler;
+use super::compiler::{Compiler, to_var};
 use anyhow::anyhow;
 use melior::dialect::arith;
 use melior::ir::{Block, BlockLike, Operation, Value};
 use swc_ecma_ast::BinaryOp;
 
 impl<'c> Compiler<'c> {
-    pub(super) fn compile_binary_expr<'a>(
+    pub(super) fn compile_binary_expr(
         &self,
-        block: &'a Block<'c>,
+        block: &Block<'c>,
         op: BinaryOp,
-        lhs: Value<'c, 'a>,
-        rhs: Value<'c, 'a>,
-    ) -> anyhow::Result<Value<'c, 'a>> {
+        lhs: Value<'c, 'c>,
+        rhs: Value<'c, 'c>,
+    ) -> anyhow::Result<Value<'c, 'c>> {
         let operation: Operation<'c> = match op {
             BinaryOp::Add => arith::addi(lhs, rhs, self.location),
             BinaryOp::Sub => arith::subi(lhs, rhs, self.location),
@@ -39,31 +39,39 @@ impl<'c> Compiler<'c> {
             _ => return Err(anyhow!("unsupported binary operator: {:?}", op)),
         };
 
-        Ok(block.append_operation(operation).result(0)?.into())
+        Ok(unsafe { to_var(block.append_operation(operation).result(0)?.into()) })
     }
 
-    fn compile_comparison<'a>(
+    fn compile_comparison(
         &self,
-        block: &'a Block<'c>,
+        block: &Block<'c>,
         predicate: arith::CmpiPredicate,
-        lhs: Value<'c, 'a>,
-        rhs: Value<'c, 'a>,
-    ) -> Value<'c, 'a> {
-        let cmp = block
-            .append_operation(arith::cmpi(
-                self.context,
-                predicate,
-                lhs,
-                rhs,
-                self.location,
-            ))
-            .result(0)
-            .unwrap()
-            .into();
-        block
-            .append_operation(arith::extui(cmp, self.i64_type, self.location))
-            .result(0)
-            .unwrap()
-            .into()
+        lhs: Value<'c, 'c>,
+        rhs: Value<'c, 'c>,
+    ) -> Value<'c, 'c> {
+        let cmp = unsafe {
+            to_var(
+                block
+                    .append_operation(arith::cmpi(
+                        self.context,
+                        predicate,
+                        lhs,
+                        rhs,
+                        self.location,
+                    ))
+                    .result(0)
+                    .unwrap()
+                    .into(),
+            )
+        };
+        unsafe {
+            to_var(
+                block
+                    .append_operation(arith::extui(cmp, self.i64_type, self.location))
+                    .result(0)
+                    .unwrap()
+                    .into(),
+            )
+        }
     }
 }

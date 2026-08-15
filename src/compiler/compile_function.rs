@@ -1,11 +1,11 @@
-use crate::compiler::compiler::Compiler;
+use crate::compiler::compiler::{Compiler, Vars, to_var};
 use crate::compiler::is_void_function::is_void_function;
+use crate::compiler::stmt_control::StmtControl;
 use anyhow::anyhow;
 use melior::dialect::func::{func, r#return};
 use melior::ir::attribute::{StringAttribute, TypeAttribute};
 use melior::ir::r#type::FunctionType;
 use melior::ir::{Block, BlockLike, Region, RegionLike};
-use std::collections::HashMap;
 use swc_ecma_ast::{FnDecl, Pat};
 
 impl<'c> Compiler<'c> {
@@ -18,13 +18,15 @@ impl<'c> Compiler<'c> {
             .collect();
         let block = Block::new(&params);
         let is_void = is_void_function(function);
-        let mut vars = HashMap::new();
+        let mut all_blocks: Vec<Block<'c>> = vec![];
+        let mut current = block;
+        let mut vars: Vars<'c> = std::collections::HashMap::new();
 
         for (index, param) in function.function.params.iter().enumerate() {
             if let Pat::Ident(ident) = &param.pat {
                 vars.insert(
                     ident.id.sym.to_string(),
-                    block.argument(index).map_err(|e| anyhow!("{e}"))?.into(),
+                    unsafe { to_var(current.argument(index).map_err(|e| anyhow!("{e}"))?.into()) },
                 );
             }
         }
@@ -33,28 +35,37 @@ impl<'c> Compiler<'c> {
 
         if let Some(body) = &function.function.body {
             for stmt in &body.stmts {
-                if self.compile_stmt(&block, stmt, &mut vars)? {
-                    terminated = true;
-                    break;
+                match self.compile_stmt(&current, stmt, &mut vars)? {
+                    StmtControl::Continue => {}
+                    StmtControl::Terminated => {
+                        terminated = true;
+                        break;
+                    }
+                    StmtControl::Branch(merge) => {
+                        all_blocks.push(std::mem::replace(&mut current, merge));
+                    }
                 }
             }
         }
 
         if !terminated {
             if is_void {
-                block.append_operation(r#return(&[], self.location));
+                current.append_operation(r#return(&[], self.location));
             } else {
-                return Err(anyhow!(
-                    "function {} is missing a return statement",
-                    function.ident.sym
-                ));
+                return Err(anyhow!("function {} missing return", function.ident.sym));
             }
         }
+        all_blocks.push(current);
 
         let result_types = if is_void { vec![] } else { vec![self.i64_type] };
         let param_types = vec![self.i64_type; function.function.params.len()];
         let region = Region::new();
-        region.append_block(block);
+        for b in all_blocks {
+            region.append_block(b);
+        }
+        for b in self.pending_blocks.drain(..) {
+            region.append_block(b);
+        }
         self.mlir_module.body().append_operation(func(
             self.context,
             StringAttribute::new(self.context, function.ident.sym.as_ref()),

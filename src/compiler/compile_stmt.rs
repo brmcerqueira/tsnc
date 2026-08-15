@@ -1,16 +1,16 @@
-use crate::compiler::compiler::Compiler;
+use crate::compiler::compiler::{Compiler, Vars};
+use crate::compiler::stmt_control::StmtControl;
 use melior::dialect::func::r#return;
-use melior::ir::{Block, BlockLike, Value};
-use std::collections::HashMap;
+use melior::ir::{Block, BlockLike};
 use swc_ecma_ast::{Decl, Pat, Stmt};
 
 impl<'c> Compiler<'c> {
-    pub(super) fn compile_stmt<'a>(
+    pub(super) fn compile_stmt(
         &mut self,
-        block: &'a Block<'c>,
+        block: &Block<'c>,
         stmt: &Stmt,
-        vars: &mut HashMap<String, Value<'c, 'a>>,
-    ) -> anyhow::Result<bool> {
+        vars: &mut Vars<'c>,
+    ) -> anyhow::Result<StmtControl<'c>> {
         match stmt {
             Stmt::Decl(Decl::Var(var_decl)) => {
                 for decl in &var_decl.decls {
@@ -19,7 +19,7 @@ impl<'c> Compiler<'c> {
                         vars.insert(ident.id.sym.to_string(), value);
                     }
                 }
-                Ok(false)
+                Ok(StmtControl::Continue)
             }
             Stmt::Return(ret) => {
                 if let Some(arg) = &ret.arg {
@@ -28,13 +28,21 @@ impl<'c> Compiler<'c> {
                 } else {
                     block.append_operation(r#return(&[], self.location));
                 }
-                Ok(true)
+                Ok(StmtControl::Terminated)
             }
             Stmt::Expr(expr_stmt) => {
                 self.compile_expr(block, &expr_stmt.expr, vars)?;
-                Ok(false)
+                Ok(StmtControl::Continue)
             }
-            _ => Ok(false),
+            Stmt::If(if_stmt) => {
+                let (merge, terminated) = self.compile_if_stmt(block, if_stmt, vars)?;
+                if terminated {
+                    Ok(StmtControl::Terminated)
+                } else {
+                    Ok(StmtControl::Branch(merge))
+                }
+            }
+            _ => Ok(StmtControl::Continue),
         }
     }
 }

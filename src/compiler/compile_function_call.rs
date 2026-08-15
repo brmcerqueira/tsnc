@@ -1,16 +1,16 @@
-use crate::compiler::compiler::Compiler;
+use super::compiler::{Compiler, to_var};
 use anyhow::anyhow;
 use melior::dialect::func;
 use melior::ir::attribute::FlatSymbolRefAttribute;
 use melior::ir::{Block, BlockLike, Value};
 
 impl<'c> Compiler<'c> {
-    pub(super) fn compile_function_call<'a>(
+    pub(super) fn compile_function_call(
         &self,
-        block: &'a Block<'c>,
+        block: &Block<'c>,
         name: &str,
-        args: &[Value<'c, 'a>],
-    ) -> anyhow::Result<Value<'c, 'a>> {
+        args: &[Value<'c, 'c>],
+    ) -> anyhow::Result<Value<'c, 'c>> {
         let is_void = *self
             .fn_returns
             .get(name)
@@ -27,7 +27,7 @@ impl<'c> Compiler<'c> {
         if is_void {
             Ok(self.zero_i64(block))
         } else {
-            Ok(operation.result(0)?.into())
+            Ok(unsafe { to_var(operation.result(0)?.into()) })
         }
     }
 }
