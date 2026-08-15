@@ -6,11 +6,17 @@ fn main() -> anyhow::Result<()> {
         function add(a: number, b: number): number {
             return a + b;
         }
+        
+        function main(): number {
+            let result = add(10, 20);
+            console.log(result);
+            return result;
+        }    
     "#;
 
     let module = parser::parse_typescript(source)?;
 
-    compiler::compile(&module)?;
+    compiler::compile(&module, std::path::Path::new("output"))?;
 
     Ok(())
 }

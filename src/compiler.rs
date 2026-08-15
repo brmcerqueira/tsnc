@@ -1,14 +1,18 @@
 use anyhow::Result;
 use inkwell::{
-    IntPredicate,
+    AddressSpace, IntPredicate, OptimizationLevel,
     builder::Builder,
     context::Context,
     module::Module as LlvmModule,
+    targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
     values::BasicValueEnum,
 };
-use swc_ecma_ast::{BinaryOp, Decl, Expr, FnDecl, Lit, Module, ModuleItem, Pat, Stmt};
+use std::{collections::HashMap, path::Path};
+use swc_ecma_ast::{
+    BinaryOp, Callee, Decl, Expr, ExprOrSpread, FnDecl, Lit, Module, ModuleItem, Pat, Stmt,
+};
 
-pub fn compile(module: &Module) -> Result<()> {
+pub fn compile(module: &Module, output: &Path) -> Result<()> {
     let context = Context::create();
     let llvm_module = context.create_module("tsnc");
     let builder = context.create_builder();
@@ -18,8 +22,43 @@ pub fn compile(module: &Module) -> Result<()> {
             compile_function(&context, &llvm_module, &builder, function)?;
         }
     }
+    
+    Target::initialize_native(&InitializationConfig::default())
+        .map_err(|e| anyhow::anyhow!("failed to initialize target: {e}"))?;
 
-    println!("{}", llvm_module.print_to_string().to_string());
+    let triple = TargetMachine::get_default_triple();
+    let target = Target::from_triple(&triple)
+        .map_err(|e| anyhow::anyhow!("failed to get target: {e}"))?;
+    let target_machine = target
+        .create_target_machine(
+            &triple,
+            "generic",
+            "",
+            OptimizationLevel::Default,
+            RelocMode::PIC,
+            CodeModel::Default,
+        )
+        .ok_or_else(|| anyhow::anyhow!("failed to create target machine"))?;
+
+    println!("{}", llvm_module.print_to_string().to_str()?);
+
+    let obj_path = output.with_extension("o");
+    target_machine
+        .write_to_file(&llvm_module, FileType::Object, &obj_path)
+        .map_err(|e| anyhow::anyhow!("failed to write object file: {e}"))?;
+
+    let status = std::process::Command::new("cc")
+        .arg(&obj_path)
+        .arg("-o")
+        .arg(output)
+        .status()?;
+
+    std::fs::remove_file(&obj_path)?;
+
+    if !status.success() {
+        return Err(anyhow::anyhow!("linker failed with status: {status}"));
+    }
+
     Ok(())
 }
 
@@ -41,14 +80,14 @@ fn compile_function<'ctx>(
     let fn_type = i64_type.fn_type(&param_types, false);
     let fn_value = llvm_module.add_function(&function.ident.sym, fn_type, None);
 
-    let param_names: Vec<(String, usize)> = function
+    let mut vars: HashMap<String, BasicValueEnum<'ctx>> = function
         .function
         .params
         .iter()
         .enumerate()
         .filter_map(|(i, p)| {
             if let Pat::Ident(ident) = &p.pat {
-                Some((ident.id.sym.to_string(), i))
+                Some((ident.id.sym.to_string(), fn_value.get_nth_param(i as u32).unwrap()))
             } else {
                 None
             }
@@ -60,26 +99,53 @@ fn compile_function<'ctx>(
 
     if let Some(body) = &function.function.body {
         for stmt in &body.stmts {
-            if let Stmt::Return(ret) = stmt {
-                if let Some(arg) = &ret.arg {
-                    let value = compile_expr(context, builder, fn_value, arg, &param_names)?;
-                    builder.build_return(Some(&value))?;
-                } else {
-                    builder.build_return(None)?;
-                }
-            }
+            compile_stmt(context, llvm_module, builder, fn_value, stmt, &mut vars)?;
         }
     }
 
     Ok(())
 }
 
+fn compile_stmt<'ctx>(
+    context: &'ctx Context,
+    llvm_module: &LlvmModule<'ctx>,
+    builder: &Builder<'ctx>,
+    fn_value: inkwell::values::FunctionValue<'ctx>,
+    stmt: &Stmt,
+    vars: &mut HashMap<String, BasicValueEnum<'ctx>>,
+) -> Result<()> {
+    match stmt {
+        Stmt::Decl(Decl::Var(var_decl)) => {
+            for decl in &var_decl.decls {
+                if let (Pat::Ident(ident), Some(init)) = (&decl.name, &decl.init) {
+                    let value = compile_expr(context, llvm_module, builder, fn_value, init, vars)?;
+                    vars.insert(ident.id.sym.to_string(), value);
+                }
+            }
+        }
+        Stmt::Return(ret) => {
+            if let Some(arg) = &ret.arg {
+                let value = compile_expr(context, llvm_module, builder, fn_value, arg, vars)?;
+                builder.build_return(Some(&value))?;
+            } else {
+                builder.build_return(None)?;
+            }
+        }
+        Stmt::Expr(expr_stmt) => {
+            compile_expr(context, llvm_module, builder, fn_value, &expr_stmt.expr, vars)?;
+        }
+        _ => {}
+    }
+    Ok(())
+}
+
 fn compile_expr<'ctx>(
     context: &'ctx Context,
+    llvm_module: &LlvmModule<'ctx>,
     builder: &Builder<'ctx>,
     fn_value: inkwell::values::FunctionValue<'ctx>,
     expr: &Expr,
-    params: &[(String, usize)],
+    vars: &HashMap<String, BasicValueEnum<'ctx>>,
 ) -> Result<BasicValueEnum<'ctx>> {
     match expr {
         Expr::Lit(Lit::Num(num)) => {
@@ -88,16 +154,56 @@ fn compile_expr<'ctx>(
         }
         Expr::Ident(ident) => {
             let name = ident.sym.as_str();
-            if let Some((_, idx)) = params.iter().find(|(n, _)| n == name) {
-                Ok(fn_value.get_nth_param(*idx as u32).unwrap())
-            } else {
-                Err(anyhow::anyhow!("unknown identifier: {name}"))
+            vars.get(name)
+                .copied()
+                .ok_or_else(|| anyhow::anyhow!("unknown identifier: {name}"))
+        }
+        Expr::Call(call) => {
+            let args: Vec<BasicValueEnum<'ctx>> = call
+                .args
+                .iter()
+                .map(|ExprOrSpread { expr, .. }| {
+                    compile_expr(context, llvm_module, builder, fn_value, expr, vars)
+                })
+                .collect::<Result<_>>()?;
+
+            match &call.callee {
+                Callee::Expr(callee_expr) => {
+                    match callee_expr.as_ref() {
+                        Expr::Member(member) => {
+                            // console.log(x) → printf("%lld\n", x)
+                            if let (Expr::Ident(obj), swc_ecma_ast::MemberProp::Ident(prop)) =
+                                (member.obj.as_ref(), &member.prop)
+                            {
+                                if obj.sym.as_str() == "console" && prop.sym.as_str() == "log" {
+                                    return compile_console_log(context, llvm_module, builder, &args);
+                                }
+                            }
+                            Err(anyhow::anyhow!("unsupported method call"))
+                        }
+                        Expr::Ident(ident) => {
+                            let name = ident.sym.as_str();
+                            let callee = llvm_module
+                                .get_function(name)
+                                .ok_or_else(|| anyhow::anyhow!("undefined function: {name}"))?;
+                            let call_args: Vec<_> =
+                                args.iter().map(|v| (*v).into()).collect();
+                            let result = builder.build_call(callee, &call_args, "call")?;
+                            Ok(result
+                                .try_as_basic_value()
+                                .basic()
+                                .unwrap_or_else(|| context.i64_type().const_int(0, false).into()))
+                        }
+                        _ => Err(anyhow::anyhow!("unsupported callee expression")),
+                    }
+                }
+                _ => Err(anyhow::anyhow!("unsupported callee")),
             }
         }
         Expr::Bin(bin) => {
-            let lhs = compile_expr(context, builder, fn_value, &bin.left, params)?
+            let lhs = compile_expr(context, llvm_module, builder, fn_value, &bin.left, vars)?
                 .into_int_value();
-            let rhs = compile_expr(context, builder, fn_value, &bin.right, params)?
+            let rhs = compile_expr(context, llvm_module, builder, fn_value, &bin.right, vars)?
                 .into_int_value();
             let result = match bin.op {
                 BinaryOp::Add => builder.build_int_add(lhs, rhs, "add")?,
@@ -129,4 +235,29 @@ fn compile_expr<'ctx>(
         }
         _ => Err(anyhow::anyhow!("unsupported expression: {:?}", expr)),
     }
+}
+
+fn compile_console_log<'ctx>(
+    context: &'ctx Context,
+    llvm_module: &LlvmModule<'ctx>,
+    builder: &Builder<'ctx>,
+    args: &[BasicValueEnum<'ctx>],
+) -> Result<BasicValueEnum<'ctx>> {
+    let i8_ptr_type = context.ptr_type(AddressSpace::default());
+    let i32_type = context.i32_type();
+    let printf = llvm_module.get_function("printf").unwrap_or_else(|| {
+        llvm_module.add_function(
+            "printf",
+            i32_type.fn_type(&[i8_ptr_type.into()], true),
+            None,
+        )
+    });
+
+    let fmt = builder.build_global_string_ptr("%lld\n", "fmt")?;
+    let mut call_args: Vec<inkwell::values::BasicMetadataValueEnum<'ctx>> =
+        vec![fmt.as_pointer_value().into()];
+    call_args.extend(args.iter().map(|v| inkwell::values::BasicMetadataValueEnum::from(*v)));
+
+    builder.build_call(printf, &call_args, "printf")?;
+    Ok(context.i64_type().const_int(0, false).into())
 }
