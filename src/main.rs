@@ -2,18 +2,25 @@ mod compiler;
 mod parser;
 
 fn main() -> anyhow::Result<()> {
-    let source = r#"
-        function add(a: number, b: number): number {
-            return a + b;
-        }
-        
-        let result = add(10, 20);
-        console.log(result);   
-    "#;
+    let args: Vec<String> = std::env::args().collect();
 
-    let module = parser::parse_typescript(source)?;
+    if args.len() < 2 {
+        anyhow::bail!("usage: tsnc <file.ts> [tsconfig.json]");
+    }
 
-    compiler::compile(&module, std::path::Path::new("output"))?;
+    let ts_file = &args[1];
+    let source = std::fs::read_to_string(ts_file)?;
+
+    let tsconfig = if args.len() >= 3 {
+        parser::TsConfig::from_file(&args[2])?
+    } else {
+        parser::TsConfig::default()
+    };
+
+    let module = parser::parse_typescript(&source, &tsconfig)?;
+
+    let output = std::path::Path::new(ts_file).with_extension("");
+    compiler::compile(&module, &output)?;
 
     Ok(())
 }
