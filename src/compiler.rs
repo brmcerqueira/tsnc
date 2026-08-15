@@ -1,65 +1,81 @@
-use anyhow::Result;
-use inkwell::{
-    AddressSpace, IntPredicate, OptimizationLevel,
-    builder::Builder,
-    context::Context,
-    module::Module as LlvmModule,
-    targets::{CodeModel, FileType, InitializationConfig, RelocMode, Target, TargetMachine},
-    values::BasicValueEnum,
+use anyhow::{Result, anyhow};
+use melior::{
+    Context, ExecutionEngine,
+    dialect::{
+        DialectRegistry, arith, func,
+        llvm::{self, attributes::{Linkage, linkage}},
+    },
+    ir::{
+        Attribute, Block, BlockLike, Identifier, Location, Module as MlirModule, Operation,
+        Region, RegionLike, Type, Value,
+        attribute::{
+            DenseI32ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute, StringAttribute,
+            TypeAttribute,
+        },
+        operation::{OperationBuilder, OperationLike},
+        r#type::{FunctionType, IntegerType},
+    },
+    pass::{self, PassManager},
+    utility::{register_all_dialects, register_all_llvm_translations},
 };
-use std::{collections::HashMap, path::Path};
+use std::{collections::HashMap, path::Path, process::Command};
 use swc_ecma_ast::{
-    BinaryOp, Callee, Decl, Expr, ExprOrSpread, FnDecl, Lit, Module, ModuleItem, Pat, Stmt,
-    TsKeywordTypeKind, TsType,
+    BinaryOp, Callee, Decl, Expr, ExprOrSpread, FnDecl, Lit, MemberProp, Module, ModuleItem, Pat,
+    Stmt, TsKeywordTypeKind, TsType,
 };
 
 pub fn compile(module: &Module, output: &Path) -> Result<()> {
-    let context = Context::create();
-    let llvm_module = context.create_module("tsnc");
-    let builder = context.create_builder();
+    let registry = DialectRegistry::new();
+    register_all_dialects(&registry);
 
-    let mut top_level_stmts: Vec<&Stmt> = Vec::new();
+    let context = Context::new();
+    context.append_dialect_registry(&registry);
+    context.load_all_available_dialects();
+    register_all_llvm_translations(&context);
 
-    for item in &module.body {
-        if let ModuleItem::Stmt(stmt) = item {
-            match stmt {
-                Stmt::Decl(Decl::Fn(function)) => {
-                    compile_function(&context, &llvm_module, &builder, function)?;
-                }
-                other => {
-                    top_level_stmts.push(other);
-                }
-            }
-        }
+    let location = Location::unknown(&context);
+    let mlir_module = MlirModule::new(location);
+    let mut compiler = Compiler::new(&context, location, mlir_module, module);
+
+    compiler.compile_module(module)?;
+
+    if !compiler.mlir_module.as_operation().verify() {
+        return Err(anyhow!(
+            "generated MLIR failed verification:\n{}",
+            compiler.mlir_module.as_operation()
+        ));
     }
 
-    compile_main_entry(&context, &llvm_module, &builder, &top_level_stmts)?;
-    
-    Target::initialize_native(&InitializationConfig::default())
-        .map_err(|e| anyhow::anyhow!("failed to initialize target: {e}"))?;
+    let pass_manager = PassManager::new(&context);
+    pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_func_to_llvm());
+    pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
+    pass_manager
+        .run(&mut compiler.mlir_module)
+        .map_err(|e| anyhow!("lowering failed: {e}"))?;
 
-    let triple = TargetMachine::get_default_triple();
-    let target = Target::from_triple(&triple)
-        .map_err(|e| anyhow::anyhow!("failed to get target: {e}"))?;
-    let target_machine = target
-        .create_target_machine(
-            &triple,
-            "generic",
-            "",
-            OptimizationLevel::Default,
-            RelocMode::PIC,
-            CodeModel::Default,
-        )
-        .ok_or_else(|| anyhow::anyhow!("failed to create target machine"))?;
+    if !compiler.mlir_module.as_operation().verify() {
+        return Err(anyhow!(
+            "lowered MLIR failed verification:\n{}",
+            compiler.mlir_module.as_operation()
+        ));
+    }
 
-    println!("{}", llvm_module.print_to_string().to_str()?);
+    println!("{}", compiler.mlir_module.as_operation());
 
     let obj_path = output.with_extension("o");
-    target_machine
-        .write_to_file(&llvm_module, FileType::Object, &obj_path)
-        .map_err(|e| anyhow::anyhow!("failed to write object file: {e}"))?;
+    let engine = ExecutionEngine::new(&compiler.mlir_module, 2, &[], true, true);
+    engine.dump_to_object_file(
+        obj_path
+            .to_str()
+            .ok_or_else(|| anyhow!("object path is not valid UTF-8"))?,
+    );
 
-    let status = std::process::Command::new("cc")
+    if !obj_path.exists() {
+        return Err(anyhow!("failed to emit object file: {}", obj_path.display()));
+    }
+
+    let status = Command::new("cc")
         .arg(&obj_path)
         .arg("-o")
         .arg(output)
@@ -68,32 +84,462 @@ pub fn compile(module: &Module, output: &Path) -> Result<()> {
     std::fs::remove_file(&obj_path)?;
 
     if !status.success() {
-        return Err(anyhow::anyhow!("linker failed with status: {status}"));
+        return Err(anyhow!("linker failed with status: {status}"));
     }
 
     Ok(())
 }
 
-fn compile_main_entry<'ctx>(
-    context: &'ctx Context,
-    llvm_module: &LlvmModule<'ctx>,
-    builder: &Builder<'ctx>,
-    stmts: &[&Stmt],
-) -> Result<()> {
-    let fn_value = llvm_module.add_function("main", context.void_type().fn_type(&[], false), None);
+struct Compiler<'c> {
+    context: &'c Context,
+    location: Location<'c>,
+    mlir_module: MlirModule<'c>,
+    i64_type: Type<'c>,
+    i32_type: Type<'c>,
+    ptr_type: Type<'c>,
+    fn_returns: HashMap<String, bool>,
+    printf_declared: bool,
+    format_declared: bool,
+}
 
-    let entry_block = context.append_basic_block(fn_value, "entry");
-    builder.position_at_end(entry_block);
+impl<'c> Compiler<'c> {
+    fn new(
+        context: &'c Context,
+        location: Location<'c>,
+        mlir_module: MlirModule<'c>,
+        module: &Module,
+    ) -> Self {
+        let fn_returns = module
+            .body
+            .iter()
+            .filter_map(|item| match item {
+                ModuleItem::Stmt(Stmt::Decl(Decl::Fn(function))) => {
+                    Some((function.ident.sym.to_string(), is_void_function(function)))
+                }
+                _ => None,
+            })
+            .collect();
 
-    let mut vars: HashMap<String, BasicValueEnum<'ctx>> = HashMap::new();
-
-    for stmt in stmts {
-        compile_stmt(context, llvm_module, builder, fn_value, stmt, &mut vars)?;
+        Self {
+            context,
+            location,
+            mlir_module,
+            i64_type: IntegerType::new(context, 64).into(),
+            i32_type: IntegerType::new(context, 32).into(),
+            ptr_type: llvm::r#type::pointer(context, 0),
+            fn_returns,
+            printf_declared: false,
+            format_declared: false,
+        }
     }
 
-    builder.build_return(None)?;
+    fn compile_module(&mut self, module: &Module) -> Result<()> {
+        let mut top_level_stmts = Vec::new();
 
-    Ok(())
+        for item in &module.body {
+            if let ModuleItem::Stmt(stmt) = item {
+                match stmt {
+                    Stmt::Decl(Decl::Fn(function)) => self.compile_function(function)?,
+                    other => top_level_stmts.push(other),
+                }
+            }
+        }
+
+        self.compile_main_entry(&top_level_stmts)
+    }
+
+    fn compile_main_entry(&mut self, stmts: &[&Stmt]) -> Result<()> {
+        let block = Block::new(&[]);
+        let mut vars = HashMap::new();
+
+        for stmt in stmts {
+            if self.compile_stmt(&block, stmt, &mut vars)? {
+                break;
+            }
+        }
+
+        let zero = self.zero_i32(&block);
+        block.append_operation(func::r#return(&[zero], self.location));
+
+        let region = Region::new();
+        region.append_block(block);
+        self.mlir_module.body().append_operation(func::func(
+            self.context,
+            StringAttribute::new(self.context, "main"),
+            TypeAttribute::new(FunctionType::new(self.context, &[], &[self.i32_type]).into()),
+            region,
+            &[],
+            self.location,
+        ));
+
+        Ok(())
+    }
+
+    fn compile_function(&mut self, function: &FnDecl) -> Result<()> {
+        let params: Vec<_> = function
+            .function
+            .params
+            .iter()
+            .map(|_| (self.i64_type, self.location))
+            .collect();
+        let block = Block::new(&params);
+        let is_void = is_void_function(function);
+        let mut vars = HashMap::new();
+
+        for (index, param) in function.function.params.iter().enumerate() {
+            if let Pat::Ident(ident) = &param.pat {
+                vars.insert(
+                    ident.id.sym.to_string(),
+                    block.argument(index).map_err(|e| anyhow!("{e}"))?.into(),
+                );
+            }
+        }
+
+        let mut terminated = false;
+
+        if let Some(body) = &function.function.body {
+            for stmt in &body.stmts {
+                if self.compile_stmt(&block, stmt, &mut vars)? {
+                    terminated = true;
+                    break;
+                }
+            }
+        }
+
+        if !terminated {
+            if is_void {
+                block.append_operation(func::r#return(&[], self.location));
+            } else {
+                return Err(anyhow!(
+                    "function {} is missing a return statement",
+                    function.ident.sym
+                ));
+            }
+        }
+
+        let result_types = if is_void { vec![] } else { vec![self.i64_type] };
+        let param_types = vec![self.i64_type; function.function.params.len()];
+        let region = Region::new();
+        region.append_block(block);
+        self.mlir_module.body().append_operation(func::func(
+            self.context,
+            StringAttribute::new(self.context, function.ident.sym.as_ref()),
+            TypeAttribute::new(FunctionType::new(self.context, &param_types, &result_types).into()),
+            region,
+            &[],
+            self.location,
+        ));
+
+        Ok(())
+    }
+
+    fn compile_stmt<'a>(
+        &mut self,
+        block: &'a Block<'c>,
+        stmt: &Stmt,
+        vars: &mut HashMap<String, Value<'c, 'a>>,
+    ) -> Result<bool> {
+        match stmt {
+            Stmt::Decl(Decl::Var(var_decl)) => {
+                for decl in &var_decl.decls {
+                    if let (Pat::Ident(ident), Some(init)) = (&decl.name, &decl.init) {
+                        let value = self.compile_expr(block, init, vars)?;
+                        vars.insert(ident.id.sym.to_string(), value);
+                    }
+                }
+                Ok(false)
+            }
+            Stmt::Return(ret) => {
+                if let Some(arg) = &ret.arg {
+                    let value = self.compile_expr(block, arg, vars)?;
+                    block.append_operation(func::r#return(&[value], self.location));
+                } else {
+                    block.append_operation(func::r#return(&[], self.location));
+                }
+                Ok(true)
+            }
+            Stmt::Expr(expr_stmt) => {
+                self.compile_expr(block, &expr_stmt.expr, vars)?;
+                Ok(false)
+            }
+            _ => Ok(false),
+        }
+    }
+
+    fn compile_expr<'a>(
+        &mut self,
+        block: &'a Block<'c>,
+        expr: &Expr,
+        vars: &HashMap<String, Value<'c, 'a>>,
+    ) -> Result<Value<'c, 'a>> {
+        match expr {
+            Expr::Lit(Lit::Num(num)) => Ok(block
+                .append_operation(arith::constant(
+                    self.context,
+                    IntegerAttribute::new(self.i64_type, num.value as i64).into(),
+                    self.location,
+                ))
+                .result(0)
+                .unwrap()
+                .into()),
+            Expr::Ident(ident) => vars
+                .get(ident.sym.as_ref())
+                .copied()
+                .ok_or_else(|| anyhow!("unknown identifier: {}", ident.sym)),
+            Expr::Paren(paren) => self.compile_expr(block, &paren.expr, vars),
+            Expr::Call(call) => {
+                let args = call
+                    .args
+                    .iter()
+                    .map(|ExprOrSpread { expr, .. }| self.compile_expr(block, expr, vars))
+                    .collect::<Result<Vec<_>>>()?;
+
+                match &call.callee {
+                    Callee::Expr(callee_expr) => match callee_expr.as_ref() {
+                        Expr::Member(member) => {
+                            if let (Expr::Ident(obj), MemberProp::Ident(prop)) =
+                                (member.obj.as_ref(), &member.prop)
+                            {
+                                if obj.sym.as_ref() == "console" && prop.sym.as_ref() == "log" {
+                                    return self.compile_console_log(block, &args);
+                                }
+                            }
+
+                            Err(anyhow!("unsupported method call"))
+                        }
+                        Expr::Ident(ident) => {
+                            self.compile_function_call(block, ident.sym.as_ref(), &args)
+                        }
+                        _ => Err(anyhow!("unsupported callee expression")),
+                    },
+                    _ => Err(anyhow!("unsupported callee")),
+                }
+            }
+            Expr::Bin(bin) => {
+                let lhs = self.compile_expr(block, &bin.left, vars)?;
+                let rhs = self.compile_expr(block, &bin.right, vars)?;
+                self.compile_binary_expr(block, bin.op, lhs, rhs)
+            }
+            _ => Err(anyhow!("unsupported expression: {:?}", expr)),
+        }
+    }
+
+    fn compile_function_call<'a>(
+        &self,
+        block: &'a Block<'c>,
+        name: &str,
+        args: &[Value<'c, 'a>],
+    ) -> Result<Value<'c, 'a>> {
+        let is_void = *self
+            .fn_returns
+            .get(name)
+            .ok_or_else(|| anyhow!("undefined function: {name}"))?;
+        let result_types = if is_void { vec![] } else { vec![self.i64_type] };
+        let operation = block.append_operation(func::call(
+            self.context,
+            FlatSymbolRefAttribute::new(self.context, name),
+            args,
+            &result_types,
+            self.location,
+        ));
+
+        if is_void {
+            Ok(self.zero_i64(block))
+        } else {
+            Ok(operation.result(0).unwrap().into())
+        }
+    }
+
+    fn compile_binary_expr<'a>(
+        &self,
+        block: &'a Block<'c>,
+        op: BinaryOp,
+        lhs: Value<'c, 'a>,
+        rhs: Value<'c, 'a>,
+    ) -> Result<Value<'c, 'a>> {
+        let operation: Operation<'c> = match op {
+            BinaryOp::Add => arith::addi(lhs, rhs, self.location),
+            BinaryOp::Sub => arith::subi(lhs, rhs, self.location),
+            BinaryOp::Mul => arith::muli(lhs, rhs, self.location),
+            BinaryOp::Div => arith::divsi(lhs, rhs, self.location),
+            BinaryOp::Mod => arith::remsi(lhs, rhs, self.location),
+            BinaryOp::Lt => {
+                return Ok(self.compile_comparison(block, arith::CmpiPredicate::Slt, lhs, rhs))
+            }
+            BinaryOp::LtEq => {
+                return Ok(self.compile_comparison(block, arith::CmpiPredicate::Sle, lhs, rhs))
+            }
+            BinaryOp::Gt => {
+                return Ok(self.compile_comparison(block, arith::CmpiPredicate::Sgt, lhs, rhs))
+            }
+            BinaryOp::GtEq => {
+                return Ok(self.compile_comparison(block, arith::CmpiPredicate::Sge, lhs, rhs))
+            }
+            BinaryOp::EqEqEq => {
+                return Ok(self.compile_comparison(block, arith::CmpiPredicate::Eq, lhs, rhs))
+            }
+            BinaryOp::NotEqEq => {
+                return Ok(self.compile_comparison(block, arith::CmpiPredicate::Ne, lhs, rhs))
+            }
+            _ => return Err(anyhow!("unsupported binary operator: {:?}", op)),
+        };
+
+        Ok(block.append_operation(operation).result(0).unwrap().into())
+    }
+
+    fn compile_comparison<'a>(
+        &self,
+        block: &'a Block<'c>,
+        predicate: arith::CmpiPredicate,
+        lhs: Value<'c, 'a>,
+        rhs: Value<'c, 'a>,
+    ) -> Value<'c, 'a> {
+        let cmp = block
+            .append_operation(arith::cmpi(self.context, predicate, lhs, rhs, self.location))
+            .result(0)
+            .unwrap()
+            .into();
+        block
+            .append_operation(arith::extui(cmp, self.i64_type, self.location))
+            .result(0)
+            .unwrap()
+            .into()
+    }
+
+    fn compile_console_log<'a>(
+        &mut self,
+        block: &'a Block<'c>,
+        args: &[Value<'c, 'a>],
+    ) -> Result<Value<'c, 'a>> {
+        if args.len() != 1 {
+            return Err(anyhow!("console.log expects exactly one argument"));
+        }
+
+        self.ensure_printf_support()?;
+
+        let printf_type = llvm::r#type::function(self.i32_type, &[self.ptr_type], true);
+        let fmt_ptr = block.append_operation(
+            OperationBuilder::new("llvm.mlir.addressof", self.location)
+                .add_attributes(&[(
+                    Identifier::new(self.context, "global_name"),
+                    FlatSymbolRefAttribute::new(self.context, "fmt").into(),
+                )])
+                .add_results(&[self.ptr_type])
+                .build()
+                .map_err(|e| anyhow!("{e}"))?,
+        );
+
+        block.append_operation(
+            OperationBuilder::new("llvm.call", self.location)
+                .add_operands(&[fmt_ptr.result(0).unwrap().into(), args[0]])
+                .add_attributes(&[
+                    (
+                        Identifier::new(self.context, "callee"),
+                        FlatSymbolRefAttribute::new(self.context, "printf").into(),
+                    ),
+                    (
+                        Identifier::new(self.context, "operandSegmentSizes"),
+                        DenseI32ArrayAttribute::new(self.context, &[2, 0]).into(),
+                    ),
+                    (
+                        Identifier::new(self.context, "op_bundle_sizes"),
+                        DenseI32ArrayAttribute::new(self.context, &[]).into(),
+                    ),
+                    (
+                        Identifier::new(self.context, "var_callee_type"),
+                        TypeAttribute::new(printf_type).into(),
+                    ),
+                ])
+                .add_results(&[self.i32_type])
+                .build()
+                .map_err(|e| anyhow!("{e}"))?,
+        );
+
+        Ok(self.zero_i64(block))
+    }
+
+    fn ensure_printf_support(&mut self) -> Result<()> {
+        if !self.printf_declared {
+            self.mlir_module.body().append_operation(llvm::func(
+                self.context,
+                StringAttribute::new(self.context, "printf"),
+                TypeAttribute::new(llvm::r#type::function(self.i32_type, &[self.ptr_type], true)),
+                Region::new(),
+                &[(
+                    Identifier::new(self.context, "linkage"),
+                    linkage(self.context, Linkage::External),
+                )],
+                self.location,
+            ));
+            self.printf_declared = true;
+        }
+
+        if !self.format_declared {
+            let format = "%lld\n\0";
+            let i8_type: Type<'c> = IntegerType::new(self.context, 8).into();
+            let array_type = llvm::r#type::array(i8_type, format.len() as u32);
+
+            self.mlir_module.body().append_operation(
+                OperationBuilder::new("llvm.mlir.global", self.location)
+                    .add_attributes(&[
+                        (
+                            Identifier::new(self.context, "sym_name"),
+                            StringAttribute::new(self.context, "fmt").into(),
+                        ),
+                        (
+                            Identifier::new(self.context, "global_type"),
+                            TypeAttribute::new(array_type).into(),
+                        ),
+                        (
+                            Identifier::new(self.context, "value"),
+                            StringAttribute::new(self.context, format).into(),
+                        ),
+                        (
+                            Identifier::new(self.context, "linkage"),
+                            linkage(self.context, Linkage::Internal),
+                        ),
+                        (
+                            Identifier::new(self.context, "constant"),
+                            Attribute::unit(self.context),
+                        ),
+                        (
+                            Identifier::new(self.context, "addr_space"),
+                            IntegerAttribute::new(self.i32_type, 0).into(),
+                        ),
+                    ])
+                    .add_regions([Region::new()])
+                    .build()
+                    .map_err(|e| anyhow!("{e}"))?,
+            );
+            self.format_declared = true;
+        }
+
+        Ok(())
+    }
+
+    fn zero_i64<'a>(&self, block: &'a Block<'c>) -> Value<'c, 'a> {
+        block
+            .append_operation(arith::constant(
+                self.context,
+                IntegerAttribute::new(self.i64_type, 0).into(),
+                self.location,
+            ))
+            .result(0)
+            .unwrap()
+            .into()
+    }
+
+    fn zero_i32<'a>(&self, block: &'a Block<'c>) -> Value<'c, 'a> {
+        block
+            .append_operation(arith::constant(
+                self.context,
+                IntegerAttribute::new(self.i32_type, 0).into(),
+                self.location,
+            ))
+            .result(0)
+            .unwrap()
+            .into()
+    }
 }
 
 fn is_void_function(function: &FnDecl) -> bool {
@@ -104,220 +550,4 @@ fn is_void_function(function: &FnDecl) -> bool {
             TsType::TsKeywordType(kw) if kw.kind == TsKeywordTypeKind::TsVoidKeyword
         ),
     }
-}
-
-fn compile_function<'ctx>(
-    context: &'ctx Context,
-    llvm_module: &LlvmModule<'ctx>,
-    builder: &Builder<'ctx>,
-    function: &FnDecl,
-) -> Result<()> {
-    let i64_type = context.i64_type();
-    let void_type = context.void_type();
-    let is_void = is_void_function(function);
-
-    let param_types: Vec<_> = function
-        .function
-        .params
-        .iter()
-        .map(|_| i64_type.into())
-        .collect();
-
-    let fn_type = if is_void {
-        void_type.fn_type(&param_types, false)
-    } else {
-        i64_type.fn_type(&param_types, false)
-    };
-
-    let fn_value = llvm_module.add_function(&function.ident.sym, fn_type, None);
-
-    let mut vars: HashMap<String, BasicValueEnum<'ctx>> = function
-        .function
-        .params
-        .iter()
-        .enumerate()
-        .filter_map(|(i, p)| {
-            if let Pat::Ident(ident) = &p.pat {
-                Some((ident.id.sym.to_string(), fn_value.get_nth_param(i as u32).unwrap()))
-            } else {
-                None
-            }
-        })
-        .collect();
-
-    let entry_block = context.append_basic_block(fn_value, "entry");
-    builder.position_at_end(entry_block);
-
-    if let Some(body) = &function.function.body {
-        for stmt in &body.stmts {
-            compile_stmt(context, llvm_module, builder, fn_value, stmt, &mut vars)?;
-        }
-
-        if is_void {
-            let last_is_return = body.stmts.last().map_or(false, |s| matches!(s, Stmt::Return(_)));
-            if !last_is_return {
-                builder.build_return(None)?;
-            }
-        }
-    } else if is_void {
-        builder.build_return(None)?;
-    }
-
-    Ok(())
-}
-
-fn compile_stmt<'ctx>(
-    context: &'ctx Context,
-    llvm_module: &LlvmModule<'ctx>,
-    builder: &Builder<'ctx>,
-    fn_value: inkwell::values::FunctionValue<'ctx>,
-    stmt: &Stmt,
-    vars: &mut HashMap<String, BasicValueEnum<'ctx>>,
-) -> Result<()> {
-    match stmt {
-        Stmt::Decl(Decl::Var(var_decl)) => {
-            for decl in &var_decl.decls {
-                if let (Pat::Ident(ident), Some(init)) = (&decl.name, &decl.init) {
-                    let value = compile_expr(context, llvm_module, builder, fn_value, init, vars)?;
-                    vars.insert(ident.id.sym.to_string(), value);
-                }
-            }
-        }
-        Stmt::Return(ret) => {
-            if let Some(arg) = &ret.arg {
-                let value = compile_expr(context, llvm_module, builder, fn_value, arg, vars)?;
-                builder.build_return(Some(&value))?;
-            } else {
-                builder.build_return(None)?;
-            }
-        }
-        Stmt::Expr(expr_stmt) => {
-            compile_expr(context, llvm_module, builder, fn_value, &expr_stmt.expr, vars)?;
-        }
-        _ => {}
-    }
-    Ok(())
-}
-
-fn compile_expr<'ctx>(
-    context: &'ctx Context,
-    llvm_module: &LlvmModule<'ctx>,
-    builder: &Builder<'ctx>,
-    fn_value: inkwell::values::FunctionValue<'ctx>,
-    expr: &Expr,
-    vars: &HashMap<String, BasicValueEnum<'ctx>>,
-) -> Result<BasicValueEnum<'ctx>> {
-    match expr {
-        Expr::Lit(Lit::Num(num)) => {
-            let i64_type = context.i64_type();
-            Ok(i64_type.const_int(num.value as u64, false).into())
-        }
-        Expr::Ident(ident) => {
-            let name = ident.sym.as_str();
-            vars.get(name)
-                .copied()
-                .ok_or_else(|| anyhow::anyhow!("unknown identifier: {name}"))
-        }
-        Expr::Call(call) => {
-            let args: Vec<BasicValueEnum<'ctx>> = call
-                .args
-                .iter()
-                .map(|ExprOrSpread { expr, .. }| {
-                    compile_expr(context, llvm_module, builder, fn_value, expr, vars)
-                })
-                .collect::<Result<_>>()?;
-
-            match &call.callee {
-                Callee::Expr(callee_expr) => {
-                    match callee_expr.as_ref() {
-                        Expr::Member(member) => {
-                            // console.log(x) → printf("%lld\n", x)
-                            if let (Expr::Ident(obj), swc_ecma_ast::MemberProp::Ident(prop)) =
-                                (member.obj.as_ref(), &member.prop)
-                            {
-                                if obj.sym.as_str() == "console" && prop.sym.as_str() == "log" {
-                                    return compile_console_log(context, llvm_module, builder, &args);
-                                }
-                            }
-                            Err(anyhow::anyhow!("unsupported method call"))
-                        }
-                        Expr::Ident(ident) => {
-                            let name = ident.sym.as_str();
-                            let callee = llvm_module
-                                .get_function(name)
-                                .ok_or_else(|| anyhow::anyhow!("undefined function: {name}"))?;
-                            let call_args: Vec<_> =
-                                args.iter().map(|v| (*v).into()).collect();
-                            let result = builder.build_call(callee, &call_args, "call")?;
-                            Ok(result
-                                .try_as_basic_value()
-                                .basic()
-                                .unwrap_or_else(|| context.i64_type().const_int(0, false).into()))
-                        }
-                        _ => Err(anyhow::anyhow!("unsupported callee expression")),
-                    }
-                }
-                _ => Err(anyhow::anyhow!("unsupported callee")),
-            }
-        }
-        Expr::Bin(bin) => {
-            let lhs = compile_expr(context, llvm_module, builder, fn_value, &bin.left, vars)?
-                .into_int_value();
-            let rhs = compile_expr(context, llvm_module, builder, fn_value, &bin.right, vars)?
-                .into_int_value();
-            let result = match bin.op {
-                BinaryOp::Add => builder.build_int_add(lhs, rhs, "add")?,
-                BinaryOp::Sub => builder.build_int_sub(lhs, rhs, "sub")?,
-                BinaryOp::Mul => builder.build_int_mul(lhs, rhs, "mul")?,
-                BinaryOp::Div => builder.build_int_signed_div(lhs, rhs, "div")?,
-                BinaryOp::Mod => builder.build_int_signed_rem(lhs, rhs, "rem")?,
-                BinaryOp::Lt => builder
-                    .build_int_compare(IntPredicate::SLT, lhs, rhs, "lt")?
-                    .into(),
-                BinaryOp::LtEq => builder
-                    .build_int_compare(IntPredicate::SLE, lhs, rhs, "le")?
-                    .into(),
-                BinaryOp::Gt => builder
-                    .build_int_compare(IntPredicate::SGT, lhs, rhs, "gt")?
-                    .into(),
-                BinaryOp::GtEq => builder
-                    .build_int_compare(IntPredicate::SGE, lhs, rhs, "ge")?
-                    .into(),
-                BinaryOp::EqEqEq => builder
-                    .build_int_compare(IntPredicate::EQ, lhs, rhs, "eq")?
-                    .into(),
-                BinaryOp::NotEqEq => builder
-                    .build_int_compare(IntPredicate::NE, lhs, rhs, "ne")?
-                    .into(),
-                _ => return Err(anyhow::anyhow!("unsupported binary operator: {:?}", bin.op)),
-            };
-            Ok(result.into())
-        }
-        _ => Err(anyhow::anyhow!("unsupported expression: {:?}", expr)),
-    }
-}
-
-fn compile_console_log<'ctx>(
-    context: &'ctx Context,
-    llvm_module: &LlvmModule<'ctx>,
-    builder: &Builder<'ctx>,
-    args: &[BasicValueEnum<'ctx>],
-) -> Result<BasicValueEnum<'ctx>> {
-    let i8_ptr_type = context.ptr_type(AddressSpace::default());
-    let i32_type = context.i32_type();
-    let printf = llvm_module.get_function("printf").unwrap_or_else(|| {
-        llvm_module.add_function(
-            "printf",
-            i32_type.fn_type(&[i8_ptr_type.into()], true),
-            None,
-        )
-    });
-
-    let fmt = builder.build_global_string_ptr("%lld\n", "fmt")?;
-    let mut call_args: Vec<inkwell::values::BasicMetadataValueEnum<'ctx>> =
-        vec![fmt.as_pointer_value().into()];
-    call_args.extend(args.iter().map(|v| inkwell::values::BasicMetadataValueEnum::from(*v)));
-
-    builder.build_call(printf, &call_args, "printf")?;
-    Ok(context.i64_type().const_int(0, false).into())
 }
