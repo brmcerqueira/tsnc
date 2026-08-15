@@ -5,18 +5,12 @@ fn main() -> anyhow::Result<()> {
     let args: Vec<String> = std::env::args().collect();
 
     if args.len() < 2 {
-        anyhow::bail!("usage: tsnc <file.ts> [tsconfig.json]");
+        anyhow::bail!("usage: tsnc <file.ts>");
     }
 
     let ts_file = &args[1];
-
-    let tsconfig = if args.len() >= 3 {
-        parser::TsConfig::from_file(&args[2])?
-    } else {
-        parser::TsConfig::default()
-    };
-
-    let module = parser::parse_typescript(ts_file, &tsconfig)?;
+    
+    let module = parser::parse_typescript(ts_file)?;
 
     let output = std::path::Path::new(ts_file).with_extension("");
     compiler::compile(&module, &output)?;
