@@ -280,8 +280,7 @@ impl<'c> Compiler<'c> {
                     IntegerAttribute::new(self.i64_type, num.value as i64).into(),
                     self.location,
                 ))
-                .result(0)
-                .unwrap()
+                .result(0)?
                 .into()),
             Expr::Ident(ident) => vars
                 .get(ident.sym.as_ref())
@@ -347,7 +346,7 @@ impl<'c> Compiler<'c> {
         if is_void {
             Ok(self.zero_i64(block))
         } else {
-            Ok(operation.result(0).unwrap().into())
+            Ok(operation.result(0)?.into())
         }
     }
 
@@ -385,7 +384,7 @@ impl<'c> Compiler<'c> {
             _ => return Err(anyhow!("unsupported binary operator: {:?}", op)),
         };
 
-        Ok(block.append_operation(operation).result(0).unwrap().into())
+        Ok(block.append_operation(operation).result(0)?.into())
     }
 
     fn compile_comparison<'a>(
@@ -427,7 +426,7 @@ impl<'c> Compiler<'c> {
                 .into(),
         );
 
-        let operands: &[Value<'c, 'a>] = &[fmt_ptr.result(0).unwrap().into(), args[0]];
+        let operands: &[Value<'c, 'a>] = &[fmt_ptr.result(0)?.into(), args[0]];
         block.append_operation(
             melior::ir::operation::OperationBuilder::new("llvm.call", self.location)
                 .add_operands(operands)
