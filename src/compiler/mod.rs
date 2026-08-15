@@ -1,3 +1,3 @@
-mod compile;
+mod emit;
 
-pub use compile::compile;
+pub use emit::emit;

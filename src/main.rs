@@ -1,3 +1,4 @@
+use std::path::Path;
 
 mod compiler;
 mod parser;
@@ -11,10 +12,10 @@ fn main() -> anyhow::Result<()> {
 
     let ts_file = &args[1];
 
-    let module = parser::parse_typescript(ts_file)?;
-
-    let output = std::path::Path::new(ts_file).with_extension("");
-    compiler::compile(&module, &output)?;
+    compiler::emit(
+        &parser::parse_typescript(ts_file)?,
+        &Path::new(ts_file).with_extension(""),
+    )?;
 
     Ok(())
 }

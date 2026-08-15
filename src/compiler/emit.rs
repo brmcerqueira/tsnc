@@ -25,7 +25,7 @@ use swc_ecma_ast::{
     Stmt, TsKeywordTypeKind, TsType,
 };
 
-pub fn compile(module: &Module, output: &Path) -> Result<()> {
+pub fn emit(module: &Module, output: &Path) -> Result<()> {
     let registry = DialectRegistry::new();
     register_all_dialects(&registry);
 
@@ -34,9 +34,7 @@ pub fn compile(module: &Module, output: &Path) -> Result<()> {
     context.load_all_available_dialects();
     register_all_llvm_translations(&context);
 
-    let location = Location::unknown(&context);
-    let mlir_module = MlirModule::new(location);
-    let mut compiler = Compiler::new(&context, location, mlir_module, module);
+    let mut compiler = Compiler::new(&context, module);
 
     compiler.compile_module(module)?;
 
@@ -106,8 +104,6 @@ struct Compiler<'c> {
 impl<'c> Compiler<'c> {
     fn new(
         context: &'c Context,
-        location: Location<'c>,
-        mlir_module: MlirModule<'c>,
         module: &Module,
     ) -> Self {
         let fn_returns = module
@@ -121,10 +117,12 @@ impl<'c> Compiler<'c> {
             })
             .collect();
 
+        let location = Location::unknown(&context);
+
         Self {
             context,
             location,
-            mlir_module,
+            mlir_module: MlirModule::new(location),
             i64_type: IntegerType::new(context, 64).into(),
             i32_type: IntegerType::new(context, 32).into(),
             ptr_type: llvm::r#type::pointer(context, 0),
