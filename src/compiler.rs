@@ -10,6 +10,7 @@ use inkwell::{
 use std::{collections::HashMap, path::Path};
 use swc_ecma_ast::{
     BinaryOp, Callee, Decl, Expr, ExprOrSpread, FnDecl, Lit, Module, ModuleItem, Pat, Stmt,
+    TsKeywordTypeKind, TsType,
 };
 
 pub fn compile(module: &Module, output: &Path) -> Result<()> {
@@ -62,6 +63,16 @@ pub fn compile(module: &Module, output: &Path) -> Result<()> {
     Ok(())
 }
 
+fn is_void_function(function: &FnDecl) -> bool {
+    match &function.function.return_type {
+        None => true,
+        Some(ann) => matches!(
+            ann.type_ann.as_ref(),
+            TsType::TsKeywordType(kw) if kw.kind == TsKeywordTypeKind::TsVoidKeyword
+        ),
+    }
+}
+
 fn compile_function<'ctx>(
     context: &'ctx Context,
     llvm_module: &LlvmModule<'ctx>,
@@ -69,6 +80,8 @@ fn compile_function<'ctx>(
     function: &FnDecl,
 ) -> Result<()> {
     let i64_type = context.i64_type();
+    let void_type = context.void_type();
+    let is_void = is_void_function(function);
 
     let param_types: Vec<_> = function
         .function
@@ -77,7 +90,12 @@ fn compile_function<'ctx>(
         .map(|_| i64_type.into())
         .collect();
 
-    let fn_type = i64_type.fn_type(&param_types, false);
+    let fn_type = if is_void {
+        void_type.fn_type(&param_types, false)
+    } else {
+        i64_type.fn_type(&param_types, false)
+    };
+
     let fn_value = llvm_module.add_function(&function.ident.sym, fn_type, None);
 
     let mut vars: HashMap<String, BasicValueEnum<'ctx>> = function
@@ -101,6 +119,15 @@ fn compile_function<'ctx>(
         for stmt in &body.stmts {
             compile_stmt(context, llvm_module, builder, fn_value, stmt, &mut vars)?;
         }
+
+        if is_void {
+            let last_is_return = body.stmts.last().map_or(false, |s| matches!(s, Stmt::Return(_)));
+            if !last_is_return {
+                builder.build_return(None)?;
+            }
+        }
+    } else if is_void {
+        builder.build_return(None)?;
     }
 
     Ok(())

@@ -7,10 +7,9 @@ fn main() -> anyhow::Result<()> {
             return a + b;
         }
         
-        function main(): number {
+        function main() {
             let result = add(10, 20);
             console.log(result);
-            return result;
         }    
     "#;
 
