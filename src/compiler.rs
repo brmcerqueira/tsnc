@@ -4,6 +4,7 @@ use melior::{
     dialect::{
         DialectRegistry, arith, func,
         llvm::{self, attributes::{Linkage, linkage}},
+        ods,
     },
     ir::{
         Attribute, Block, BlockLike, Identifier, Location, Module as MlirModule, Operation,
@@ -419,36 +420,26 @@ impl<'c> Compiler<'c> {
 
         let printf_type = llvm::r#type::function(self.i32_type, &[self.ptr_type], true);
         let fmt_ptr = block.append_operation(
-            OperationBuilder::new("llvm.mlir.addressof", self.location)
-                .add_attributes(&[(
-                    Identifier::new(self.context, "global_name"),
-                    FlatSymbolRefAttribute::new(self.context, "fmt").into(),
-                )])
-                .add_results(&[self.ptr_type])
+            ods::llvm::AddressOfOperation::builder(self.context, self.location)
+                .global_name(FlatSymbolRefAttribute::new(self.context, "fmt"))
+                .res(self.ptr_type)
                 .build()
-                .map_err(|e| anyhow!("{e}"))?,
+                .into(),
         );
 
+        let operands: &[Value<'c, 'a>] = &[fmt_ptr.result(0).unwrap().into(), args[0]];
         block.append_operation(
-            OperationBuilder::new("llvm.call", self.location)
-                .add_operands(&[fmt_ptr.result(0).unwrap().into(), args[0]])
+            melior::ir::operation::OperationBuilder::new("llvm.call", self.location)
+                .add_operands(operands)
                 .add_attributes(&[
-                    (
-                        Identifier::new(self.context, "callee"),
-                        FlatSymbolRefAttribute::new(self.context, "printf").into(),
-                    ),
-                    (
-                        Identifier::new(self.context, "operandSegmentSizes"),
-                        DenseI32ArrayAttribute::new(self.context, &[2, 0]).into(),
-                    ),
-                    (
-                        Identifier::new(self.context, "op_bundle_sizes"),
-                        DenseI32ArrayAttribute::new(self.context, &[]).into(),
-                    ),
-                    (
-                        Identifier::new(self.context, "var_callee_type"),
-                        TypeAttribute::new(printf_type).into(),
-                    ),
+                    (Identifier::new(self.context, "callee"),
+                     FlatSymbolRefAttribute::new(self.context, "printf").into()),
+                    (Identifier::new(self.context, "operandSegmentSizes"),
+                     DenseI32ArrayAttribute::new(self.context, &[operands.len() as i32, 0]).into()),
+                    (Identifier::new(self.context, "op_bundle_sizes"),
+                     DenseI32ArrayAttribute::new(self.context, &[]).into()),
+                    (Identifier::new(self.context, "var_callee_type"),
+                     TypeAttribute::new(printf_type).into()),
                 ])
                 .add_results(&[self.i32_type])
                 .build()
@@ -480,36 +471,15 @@ impl<'c> Compiler<'c> {
             let array_type = llvm::r#type::array(i8_type, format.len() as u32);
 
             self.mlir_module.body().append_operation(
-                OperationBuilder::new("llvm.mlir.global", self.location)
-                    .add_attributes(&[
-                        (
-                            Identifier::new(self.context, "sym_name"),
-                            StringAttribute::new(self.context, "fmt").into(),
-                        ),
-                        (
-                            Identifier::new(self.context, "global_type"),
-                            TypeAttribute::new(array_type).into(),
-                        ),
-                        (
-                            Identifier::new(self.context, "value"),
-                            StringAttribute::new(self.context, format).into(),
-                        ),
-                        (
-                            Identifier::new(self.context, "linkage"),
-                            linkage(self.context, Linkage::Internal),
-                        ),
-                        (
-                            Identifier::new(self.context, "constant"),
-                            Attribute::unit(self.context),
-                        ),
-                        (
-                            Identifier::new(self.context, "addr_space"),
-                            IntegerAttribute::new(self.i32_type, 0).into(),
-                        ),
-                    ])
-                    .add_regions([Region::new()])
+                ods::llvm::GlobalOperation::builder(self.context, self.location)
+                    .initializer(Region::new())
+                    .global_type(TypeAttribute::new(array_type))
+                    .sym_name(StringAttribute::new(self.context, "fmt"))
+                    .linkage(linkage(self.context, Linkage::Internal))
+                    .value(StringAttribute::new(self.context, format).into())
+                    .constant(Attribute::unit(self.context))
                     .build()
-                    .map_err(|e| anyhow!("{e}"))?,
+                    .into(),
             );
             self.format_declared = true;
         }
