@@ -39,12 +39,12 @@ impl TsConfig {
     }
 }
 
-pub fn parse_typescript(source: &str, tsconfig: &TsConfig) -> Result<Module> {
+pub fn parse_typescript(file: &str, tsconfig: &TsConfig) -> Result<Module> {
     let cm: Lrc<SourceMap> = Default::default();
 
     let fm = cm.new_source_file(
-        Lrc::new(FileName::Custom("input.ts".into())),
-        source.to_string(),
+        Lrc::new(FileName::Custom(file.into())),
+        std::fs::read_to_string(file)?.to_string(),
     );
 
     let tsx = tsconfig

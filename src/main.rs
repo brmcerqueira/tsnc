@@ -9,7 +9,6 @@ fn main() -> anyhow::Result<()> {
     }
 
     let ts_file = &args[1];
-    let source = std::fs::read_to_string(ts_file)?;
 
     let tsconfig = if args.len() >= 3 {
         parser::TsConfig::from_file(&args[2])?
@@ -17,7 +16,7 @@ fn main() -> anyhow::Result<()> {
         parser::TsConfig::default()
     };
 
-    let module = parser::parse_typescript(&source, &tsconfig)?;
+    let module = parser::parse_typescript(ts_file, &tsconfig)?;
 
     let output = std::path::Path::new(ts_file).with_extension("");
     compiler::compile(&module, &output)?;
