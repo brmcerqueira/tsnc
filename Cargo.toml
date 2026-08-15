@@ -1,0 +1,12 @@
+[package]
+name = "tsnc"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1"
+melior = "0.27"
+swc_common = "26.0.0"
+swc_ecma_ast = "29.0.0"
+swc_ecma_parser = "45.0.0"
+swc_ecma_visit = "29.0.0"
