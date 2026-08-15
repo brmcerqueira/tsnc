@@ -7,10 +7,8 @@ fn main() -> anyhow::Result<()> {
             return a + b;
         }
         
-        function main() {
-            let result = add(10, 20);
-            console.log(result);
-        }    
+        let result = add(10, 20);
+        console.log(result);   
     "#;
 
     let module = parser::parse_typescript(source)?;

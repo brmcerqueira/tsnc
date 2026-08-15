@@ -18,11 +18,22 @@ pub fn compile(module: &Module, output: &Path) -> Result<()> {
     let llvm_module = context.create_module("tsnc");
     let builder = context.create_builder();
 
+    let mut top_level_stmts: Vec<&Stmt> = Vec::new();
+
     for item in &module.body {
-        if let ModuleItem::Stmt(Stmt::Decl(Decl::Fn(function))) = item {
-            compile_function(&context, &llvm_module, &builder, function)?;
+        if let ModuleItem::Stmt(stmt) = item {
+            match stmt {
+                Stmt::Decl(Decl::Fn(function)) => {
+                    compile_function(&context, &llvm_module, &builder, function)?;
+                }
+                other => {
+                    top_level_stmts.push(other);
+                }
+            }
         }
     }
+
+    compile_main_entry(&context, &llvm_module, &builder, &top_level_stmts)?;
     
     Target::initialize_native(&InitializationConfig::default())
         .map_err(|e| anyhow::anyhow!("failed to initialize target: {e}"))?;
@@ -59,6 +70,28 @@ pub fn compile(module: &Module, output: &Path) -> Result<()> {
     if !status.success() {
         return Err(anyhow::anyhow!("linker failed with status: {status}"));
     }
+
+    Ok(())
+}
+
+fn compile_main_entry<'ctx>(
+    context: &'ctx Context,
+    llvm_module: &LlvmModule<'ctx>,
+    builder: &Builder<'ctx>,
+    stmts: &[&Stmt],
+) -> Result<()> {
+    let fn_value = llvm_module.add_function("main", context.void_type().fn_type(&[], false), None);
+
+    let entry_block = context.append_basic_block(fn_value, "entry");
+    builder.position_at_end(entry_block);
+
+    let mut vars: HashMap<String, BasicValueEnum<'ctx>> = HashMap::new();
+
+    for stmt in stmts {
+        compile_stmt(context, llvm_module, builder, fn_value, stmt, &mut vars)?;
+    }
+
+    builder.build_return(None)?;
 
     Ok(())
 }
