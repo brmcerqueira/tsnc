@@ -13,7 +13,7 @@ use melior::{
             DenseI32ArrayAttribute, FlatSymbolRefAttribute, IntegerAttribute, StringAttribute,
             TypeAttribute,
         },
-        operation::{OperationBuilder, OperationLike},
+        operation::OperationLike,
         r#type::{FunctionType, IntegerType},
     },
     pass::{self, PassManager},
