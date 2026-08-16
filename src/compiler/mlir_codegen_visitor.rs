@@ -2,14 +2,12 @@ use anyhow::{Result, anyhow};
 use melior::Context;
 use melior::dialect::arith;
 use melior::ir::{Block, BlockLike, Location, Operation, Type, Value};
+use melior::ir::r#type::IntegerType;
 use swc_ecma_ast::{BinExpr, BinaryOp, Expr};
 use swc_ecma_visit::{Visit, VisitWith};
 
 struct MLIRCodegenVisitor<'c> {
     context: &'c Context,
-    location: Location<'c>,
-    i64_type: Type<'c>,
-    i32_type: Type<'c>,
     block: &'c Block<'c>,
     last_value: Result<Value<'c, 'c>>,
 }
@@ -36,12 +34,12 @@ impl<'c> MLIRCodegenVisitor<'c> {
                     predicate,
                     lhs,
                     rhs,
-                    self.location,
+                    Location::unknown(&self.context),
                 ))
                 .result(0)?
                 .into(),
-            self.i64_type,
-            self.location,
+            IntegerType::new(self.context, 64).into(),
+            Location::unknown(&self.context),
         ))
     }
 }
@@ -54,11 +52,11 @@ impl<'c> Visit for MLIRCodegenVisitor<'c> {
             let rhs = self.get_last_value(&expr.right)?;
 
             let operation = match expr.op {
-                BinaryOp::Add => arith::addi(lhs, rhs, self.location),
-                BinaryOp::Sub => arith::subi(lhs, rhs, self.location),
-                BinaryOp::Mul => arith::muli(lhs, rhs, self.location),
-                BinaryOp::Div => arith::divsi(lhs, rhs, self.location),
-                BinaryOp::Mod => arith::remsi(lhs, rhs, self.location),
+                BinaryOp::Add => arith::addi(lhs, rhs, Location::unknown(&self.context)),
+                BinaryOp::Sub => arith::subi(lhs, rhs, Location::unknown(&self.context)),
+                BinaryOp::Mul => arith::muli(lhs, rhs, Location::unknown(&self.context)),
+                BinaryOp::Div => arith::divsi(lhs, rhs, Location::unknown(&self.context)),
+                BinaryOp::Mod => arith::remsi(lhs, rhs, Location::unknown(&self.context)),
                 BinaryOp::Lt => self.comparison_operation(arith::CmpiPredicate::Slt, lhs, rhs)?,
                 BinaryOp::LtEq => self.comparison_operation(arith::CmpiPredicate::Sle, lhs, rhs)?,
                 BinaryOp::Gt => self.comparison_operation(arith::CmpiPredicate::Sgt, lhs, rhs)?,
