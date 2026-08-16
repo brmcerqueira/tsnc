@@ -1,5 +1,7 @@
-use super::compiler::Compiler;
+use super::compiler::{Compiler, to_var};
 use anyhow::{Result, anyhow};
+use melior::dialect::arith;
+use melior::ir::{Block, BlockLike, Location, Value};
 use melior::{
     Context, ExecutionEngine,
     dialect::DialectRegistry,
@@ -8,7 +10,8 @@ use melior::{
     utility::{register_all_dialects, register_all_llvm_translations},
 };
 use std::{path::Path, process::Command};
-use swc_ecma_ast::Module;
+use swc_ecma_ast::{BinExpr, BinaryOp, Expr, Module};
+use swc_ecma_visit::{Visit, VisitWith};
 
 pub fn emit(module: &Module, output: &Path) -> Result<()> {
     let registry = DialectRegistry::new();

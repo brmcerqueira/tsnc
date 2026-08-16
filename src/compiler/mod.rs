@@ -13,5 +13,6 @@ mod is_void_function;
 mod stmt_control;
 mod zero_i32;
 mod zero_i64;
+mod mlir_codegen_visitor;
 
 pub use emit::emit;
