@@ -1,14 +1,17 @@
 use super::visit_bin_expr::visit_bin_expr;
+use super::visit_ident::visit_ident;
 use super::visit_lit::visit_number;
 use anyhow::{Result, anyhow};
 use melior::Context;
 use melior::ir::{Block, Value};
-use swc_ecma_ast::{BinExpr, Expr, Number};
+use swc_ecma_ast::{BinExpr, Expr, Ident, Number};
 use swc_ecma_visit::{Visit, VisitWith};
+use crate::compiler::compiler::Vars;
 
 pub(super) struct MLIRCodegenVisitor<'c> {
     pub(super) context: &'c Context,
     pub(super) block: &'c Block<'c>,
+    pub(super) vars: Vars<'c>,
     pub(super) last_value: Result<Value<'c, 'c>>,
 }
 
@@ -24,6 +27,10 @@ impl<'c> MLIRCodegenVisitor<'c> {
 impl<'c> Visit for MLIRCodegenVisitor<'c> {
     fn visit_bin_expr(&mut self, node: &BinExpr) {
         self.last_value = visit_bin_expr(self, node);
+    }
+
+    fn visit_ident(&mut self, node: &Ident) {
+        self.last_value = visit_ident(self, node);
     }
 
     fn visit_number(&mut self, node: &Number) {

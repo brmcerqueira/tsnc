@@ -16,5 +16,6 @@ mod zero_i64;
 mod mlir_codegen_visitor;
 mod visit_bin_expr;
 mod visit_lit;
+mod visit_ident;
 
 pub use emit::emit;
