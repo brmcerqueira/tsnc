@@ -1,4 +1,4 @@
-use anyhow::anyhow;
+use anyhow::{Result, anyhow};
 use melior::dialect::arith;
 use melior::ir::{Block, BlockLike, Location, Value};
 use swc_ecma_ast::{BinExpr, BinaryOp, Expr};
@@ -7,11 +7,11 @@ use swc_ecma_visit::{Visit, VisitWith};
 struct MLIRCodegenVisitor<'c> {
     block: &'c Block<'c>,
     location: Location<'c>,
-    last_value: anyhow::Result<Value<'c, 'c>>,
+    last_value: Result<Value<'c, 'c>>,
 }
 
 impl<'c> MLIRCodegenVisitor<'c> {
-    fn get_last_value(&mut self, expr: &Expr) -> anyhow::Result<Value<'c, 'c>> {
+    fn get_last_value(&mut self, expr: &Expr) -> Result<Value<'c, 'c>> {
         expr.visit_with(self);
         match &self.last_value {
             Ok(v) => Ok(*v),
