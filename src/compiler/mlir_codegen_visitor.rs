@@ -1,5 +1,5 @@
-use crate::compiler::visit_bin_expr::visit_bin_expr;
-use crate::compiler::visit_lit::visit_number;
+use super::visit_bin_expr::visit_bin_expr;
+use super::visit_lit::visit_number;
 use anyhow::{Result, anyhow};
 use melior::Context;
 use melior::ir::{Block, Value};
