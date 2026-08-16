@@ -6,6 +6,12 @@ use melior::ir::{Block, Value};
 use swc_ecma_ast::{BinExpr, Expr, Number};
 use swc_ecma_visit::{Visit, VisitWith};
 
+macro_rules! set_last_value {
+    ($self:ident, $fn:expr, $node:expr) => {
+        $self.last_value = (|| $fn($self, $node))()
+    };
+}
+
 pub(super) struct MLIRCodegenVisitor<'c> {
     pub(super) context: &'c Context,
     pub(super) block: &'c Block<'c>,
@@ -24,10 +30,10 @@ impl<'c> MLIRCodegenVisitor<'c> {
 
 impl<'c> Visit for MLIRCodegenVisitor<'c> {
     fn visit_bin_expr(&mut self, node: &BinExpr) {
-        self.last_value = (|| visit_bin_expr(self, node))();
+        set_last_value!(self, visit_bin_expr, node);
     }
 
     fn visit_number(&mut self, node: &Number) {
-        self.last_value = (|| visit_number(self, node))();
+        set_last_value!(self, visit_number, node);
     }
 }
