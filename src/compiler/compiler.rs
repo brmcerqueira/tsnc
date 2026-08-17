@@ -6,7 +6,6 @@ use melior::ir::{Location, Module as MlirModule, Type, Value};
 use std::collections::HashMap;
 use swc_ecma_ast::{Decl, Module, ModuleItem, Stmt};
 
-pub(super) type Vars<'c> = HashMap<String, Value<'c, 'c>>;
 
 pub(super) unsafe fn to_var<'c, 'a>(val: Value<'c, 'a>) -> Value<'c, 'c> {
     unsafe { std::mem::transmute(val) }

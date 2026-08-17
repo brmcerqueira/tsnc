@@ -1,9 +1,10 @@
-use super::compiler::{Compiler, Vars, to_var};
+use super::compiler::{Compiler, to_var};
 use anyhow::anyhow;
 use melior::dialect::arith;
 use melior::ir::attribute::IntegerAttribute;
 use melior::ir::{Block, BlockLike, Value};
 use swc_ecma_ast::{Callee, Expr, ExprOrSpread, Lit, MemberProp};
+use crate::compiler::mlir_codegen_visitor::Vars;
 
 impl<'c> Compiler<'c> {
     pub(super) fn compile_expr(

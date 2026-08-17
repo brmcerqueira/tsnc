@@ -1,9 +1,10 @@
-use super::compiler::{Compiler, Vars, to_var};
+use super::compiler::{Compiler, to_var};
 use super::stmt_control::StmtControl;
 use melior::dialect::{arith, cf};
 use melior::ir::r#type::IntegerType;
 use melior::ir::{Block, BlockLike};
 use swc_ecma_ast::{IfStmt, Stmt};
+use crate::compiler::mlir_codegen_visitor::Vars;
 
 impl<'c> Compiler<'c> {
     pub(super) fn compile_if_stmt(

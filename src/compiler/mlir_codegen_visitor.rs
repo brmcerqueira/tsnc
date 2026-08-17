@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use super::visit_bin_expr::visit_bin_expr;
 use super::visit_ident::visit_ident;
 use super::visit_lit::visit_number;
@@ -6,7 +7,8 @@ use melior::Context;
 use melior::ir::{Block, Value};
 use swc_ecma_ast::{BinExpr, Expr, Ident, Number};
 use swc_ecma_visit::{Visit, VisitWith};
-use crate::compiler::compiler::Vars;
+
+pub(super) type Vars<'c> = HashMap<String, Value<'c, 'c>>;
 
 pub(super) struct MLIRCodegenVisitor<'c> {
     pub(super) context: &'c Context,
