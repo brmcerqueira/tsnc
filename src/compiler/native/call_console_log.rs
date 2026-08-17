@@ -10,5 +10,5 @@ pub(super) fn call_console_log<'c>(
         return Err(anyhow!("console.log expects exactly one argument"));
     }
 
-    Err(anyhow!("can't resolve native call for"))
+    Err(anyhow!("call_console_log don't have implementation"))
 }
