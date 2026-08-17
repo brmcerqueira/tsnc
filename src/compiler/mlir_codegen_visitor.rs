@@ -5,8 +5,9 @@ use super::visit_lit::visit_number;
 use anyhow::{Result, anyhow};
 use melior::Context;
 use melior::ir::{Block, Value};
-use swc_ecma_ast::{BinExpr, Expr, Ident, Number};
+use swc_ecma_ast::{BinExpr, CallExpr, Expr, Ident, Number};
 use swc_ecma_visit::{Visit, VisitWith};
+use super::visit_call_expr::visit_call_expr;
 
 pub(super) type Vars<'c> = HashMap<String, Value<'c, 'c>>;
 
@@ -37,5 +38,9 @@ impl<'c> Visit for MLIRCodegenVisitor<'c> {
 
     fn visit_number(&mut self, node: &Number) {
         self.last_value = visit_number(self, node);
+    }
+
+    fn visit_call_expr(&mut self, node: &CallExpr) {
+        self.last_value = visit_call_expr(self, node);
     }
 }

@@ -17,5 +17,6 @@ mod mlir_codegen_visitor;
 mod visit_bin_expr;
 mod visit_lit;
 mod visit_ident;
+mod visit_call_expr;
 
 pub use emit::emit;
