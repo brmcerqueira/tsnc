@@ -1,7 +1,4 @@
-use super::mlir_codegen_visitor::MLIRCodegenVisitor;
-use anyhow::{Result, anyhow};
-use melior::ir::Value;
-
+#[macro_export]
 macro_rules! native_call {
     (
         $(
@@ -12,7 +9,7 @@ macro_rules! native_call {
             }
         ),* $(,)?
     ) => {
-        pub(super) fn native_call_resolver<'c>(
+        pub fn native_call_resolver<'c>(
             visitor: &mut MLIRCodegenVisitor<'c>,
             args: &Vec<Value>,
             object_name: &str,
@@ -33,13 +30,4 @@ macro_rules! native_call {
             ))
         }
     };
-}
-
-native_call!("console": {"log": call_console_log});
-
-pub(super) fn call_console_log<'c>(
-    visitor: &mut MLIRCodegenVisitor<'c>,
-    args: &Vec<Value>,
-) -> Result<Value<'c, 'c>> {
-    Err(anyhow!("can't resolve native call for"))
 }

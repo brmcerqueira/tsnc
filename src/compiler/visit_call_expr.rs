@@ -1,11 +1,12 @@
 use super::mlir_codegen_visitor::MLIRCodegenVisitor;
+
+use super::native::native_call_resolver::native_call_resolver;
 use anyhow::{Result, anyhow};
 use melior::dialect::func;
 use melior::ir::attribute::FlatSymbolRefAttribute;
 use melior::ir::r#type::IntegerType;
 use melior::ir::{BlockLike, Location, Type, Value};
 use swc_ecma_ast::{CallExpr, Callee, Expr, ExprOrSpread, MemberProp, TsKeywordTypeKind, TsType};
-use super::native_call_resolver::native_call_resolver;
 
 pub(super) fn visit_call_expr<'c>(
     visitor: &mut MLIRCodegenVisitor<'c>,
@@ -23,7 +24,12 @@ pub(super) fn visit_call_expr<'c>(
                 if let (Expr::Ident(obj), MemberProp::Ident(prop)) =
                     (member.obj.as_ref(), &member.prop)
                 {
-                    return native_call_resolver(visitor, &args, obj.sym.as_ref(), prop.sym.as_ref());
+                    return native_call_resolver(
+                        visitor,
+                        &args,
+                        obj.sym.as_ref(),
+                        prop.sym.as_ref(),
+                    );
                 }
 
                 Err(anyhow!("unsupported method call"))
