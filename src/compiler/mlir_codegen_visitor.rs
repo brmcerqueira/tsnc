@@ -1,5 +1,6 @@
 use super::visit_bin_expr::visit_bin_expr;
 use super::visit_call_expr::visit_call_expr;
+use super::visit_fn_decl::visit_fn_decl;
 use super::visit_ident::visit_ident;
 use super::visit_lit::visit_number;
 use anyhow::{Result, anyhow};
@@ -30,20 +31,18 @@ impl<'c> MLIRCodegenVisitor<'c> {
     }
 }
 
+macro_rules! visit {
+    ($method:ident, $node_type:ty) => {
+        fn $method(&mut self, node: &$node_type) {
+            self.last_value = $method(self, node);
+        }
+    };
+}
+
 impl<'c> Visit for MLIRCodegenVisitor<'c> {
-    fn visit_bin_expr(&mut self, node: &BinExpr) {
-        self.last_value = visit_bin_expr(self, node);
-    }
-
-    fn visit_call_expr(&mut self, node: &CallExpr) {
-        self.last_value = visit_call_expr(self, node);
-    }
-
-    fn visit_ident(&mut self, node: &Ident) {
-        self.last_value = visit_ident(self, node);
-    }
-
-    fn visit_number(&mut self, node: &Number) {
-        self.last_value = visit_number(self, node);
-    }
+    visit!(visit_bin_expr, BinExpr);
+    visit!(visit_call_expr, CallExpr);
+    visit!(visit_ident, Ident);
+    visit!(visit_number, Number);
+    visit!(visit_fn_decl, FnDecl);
 }

@@ -19,5 +19,6 @@ mod visit_lit;
 mod visit_ident;
 mod visit_call_expr;
 mod native;
+mod visit_fn_decl;
 
 pub use emit::emit;
