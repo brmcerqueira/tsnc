@@ -1,5 +1,5 @@
 use super::mlir_codegen_visitor::{MLIRCodegenVisitor, parse_type};
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use melior::dialect::func::func;
 use melior::ir::attribute::{StringAttribute, TypeAttribute};
 use melior::ir::r#type::FunctionType;
