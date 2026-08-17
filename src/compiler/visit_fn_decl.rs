@@ -1,11 +1,42 @@
-use super::mlir_codegen_visitor::MLIRCodegenVisitor;
-use anyhow::{anyhow, Result};
-use melior::ir::Value;
-use swc_ecma_ast::FnDecl;
+use super::mlir_codegen_visitor::{MLIRCodegenVisitor, parse_type};
+use anyhow::{Result, anyhow};
+use melior::dialect::func::func;
+use melior::ir::attribute::{StringAttribute, TypeAttribute};
+use melior::ir::r#type::FunctionType;
+use melior::ir::{BlockLike, Location, Region, Type, Value};
+use swc_ecma_ast::{FnDecl, Pat};
 
 pub(super) fn visit_fn_decl<'c>(
     visitor: &MLIRCodegenVisitor<'c>,
     node: &FnDecl,
 ) -> Result<Value<'c, 'c>> {
+    let result_type = parse_type(visitor.context, &node.function.return_type);
+    let result_types = if result_type.is_none() {
+        vec![]
+    } else {
+        vec![result_type.unwrap()]
+    };
+
+    let param_types: Vec<Type> = node
+        .function
+        .params
+        .iter()
+        .filter_map(|param| match &param.pat {
+            Pat::Ident(ident) => parse_type(visitor.context, &ident.type_ann),
+            _ => None,
+        })
+        .collect();
+
+    let region = Region::new();
+
+    visitor.block.append_operation(func(
+        visitor.context,
+        StringAttribute::new(visitor.context, node.ident.sym.as_ref()),
+        TypeAttribute::new(FunctionType::new(visitor.context, &param_types, &result_types).into()),
+        region,
+        &[],
+        Location::unknown(visitor.context),
+    ));
+
     Err(anyhow!("call_console_log don't have implementation"))
 }

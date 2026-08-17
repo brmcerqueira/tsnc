@@ -5,9 +5,12 @@ use super::visit_ident::visit_ident;
 use super::visit_lit::visit_number;
 use anyhow::{Result, anyhow};
 use melior::Context;
-use melior::ir::{Block, Value};
+use melior::ir::r#type::IntegerType;
+use melior::ir::{Block, Type, Value};
 use std::collections::HashMap;
-use swc_ecma_ast::{BinExpr, CallExpr, Expr, FnDecl, Ident, Number};
+use swc_ecma_ast::{
+    BinExpr, CallExpr, Expr, FnDecl, Ident, Number, TsKeywordTypeKind, TsType, TsTypeAnn,
+};
 use swc_ecma_visit::{Visit, VisitWith};
 
 pub(super) type Vars<'c> = HashMap<String, Value<'c, 'c>>;
@@ -19,6 +22,17 @@ pub(super) struct MLIRCodegenVisitor<'c> {
     pub(super) vars: Vars<'c>,
     pub(super) functions: Functions<'c>,
     pub(super) last_value: Result<Value<'c, 'c>>,
+}
+
+pub(super) fn parse_type<'c>(context: &'c Context, ts_type: &Option<Box<TsTypeAnn>>) -> Option<Type<'c>> {
+    match ts_type {
+        None => None,
+        Some(ann) => match ann.type_ann.as_ref() {
+            TsType::TsKeywordType(kw) if kw.kind == TsKeywordTypeKind::TsVoidKeyword => None,
+            //TODO: converter para demais tipos primitivos
+            _ => Some(IntegerType::new(context, 64).into()),
+        },
+    }
 }
 
 impl<'c> MLIRCodegenVisitor<'c> {
