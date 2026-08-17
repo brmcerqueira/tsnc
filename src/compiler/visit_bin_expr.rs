@@ -32,7 +32,7 @@ impl<'c> MLIRCodegenVisitor<'c> {
 pub(super) fn visit_bin_expr<'c>(
     visitor: &mut MLIRCodegenVisitor<'c>,
     node: &BinExpr,
-) -> Result<Value<'c, 'c>> {
+) -> Result<Option<Value<'c, 'c>>> {
     let lhs = visitor.get_last_value(&node.left)?;
 
     let rhs = visitor.get_last_value(&node.right)?;
@@ -52,5 +52,5 @@ pub(super) fn visit_bin_expr<'c>(
         _ => return Err(anyhow!("unsupported binary operator: {:?}", node.op)),
     };
 
-    Ok(visitor.block.append_operation(operation).result(0)?.into())
+    Ok(Some(visitor.block.append_operation(operation).result(0)?.into()))
 }

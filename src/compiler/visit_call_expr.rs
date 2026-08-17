@@ -10,7 +10,7 @@ use swc_ecma_ast::{CallExpr, Callee, Expr, ExprOrSpread, MemberProp};
 pub(super) fn visit_call_expr<'c>(
     visitor: &mut MLIRCodegenVisitor<'c>,
     node: &CallExpr,
-) -> Result<Value<'c, 'c>> {
+) -> Result<Option<Value<'c, 'c>>> {
     let args = node
         .args
         .iter()
@@ -44,7 +44,7 @@ pub(super) fn visit_call_expr<'c>(
                     .into_iter()
                     .collect();
 
-                Ok(visitor
+                Ok(Some(visitor
                     .block
                     .append_operation(func::call(
                         visitor.context,
@@ -54,7 +54,7 @@ pub(super) fn visit_call_expr<'c>(
                         Location::unknown(visitor.context),
                     ))
                     .result(0)?
-                    .into())
+                    .into()))
             }
             _ => Err(anyhow!("unsupported callee expression")),
         },

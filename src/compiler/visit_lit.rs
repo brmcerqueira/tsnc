@@ -9,8 +9,8 @@ use swc_ecma_ast::Number;
 pub(super) fn visit_number<'c>(
     visitor: &MLIRCodegenVisitor<'c>,
     node: &Number,
-) -> Result<Value<'c, 'c>> {
-    Ok(visitor
+) -> Result<Option<Value<'c, 'c>>> {
+    Ok(Some(visitor
         .block
         .append_operation(arith::constant(
             visitor.context,
@@ -22,5 +22,5 @@ pub(super) fn visit_number<'c>(
             Location::unknown(visitor.context),
         ))
         .result(0)?
-        .into())
+        .into()))
 }

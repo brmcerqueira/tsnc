@@ -21,10 +21,13 @@ pub(super) struct MLIRCodegenVisitor<'c> {
     pub(super) block: &'c Block<'c>,
     pub(super) vars: Vars<'c>,
     pub(super) functions: Functions<'c>,
-    pub(super) last_value: Result<Value<'c, 'c>>,
+    pub(super) last_value: Result<Option<Value<'c, 'c>>>,
 }
 
-pub(super) fn parse_type<'c>(context: &'c Context, ts_type: &Option<Box<TsTypeAnn>>) -> Option<Type<'c>> {
+pub(super) fn parse_type<'c>(
+    context: &'c Context,
+    ts_type: &Option<Box<TsTypeAnn>>,
+) -> Option<Type<'c>> {
     match ts_type {
         None => None,
         Some(ann) => match ann.type_ann.as_ref() {
@@ -39,7 +42,10 @@ impl<'c> MLIRCodegenVisitor<'c> {
     pub(super) fn get_last_value(&mut self, expr: &Expr) -> Result<Value<'c, 'c>> {
         expr.visit_with(self);
         match &self.last_value {
-            Ok(v) => Ok(*v),
+            Ok(v) => match v {
+                Some(v) => Ok(*v),
+                None => Err(anyhow!("last_value is empty")),
+            },
             Err(e) => Err(anyhow!("{e}")),
         }
     }

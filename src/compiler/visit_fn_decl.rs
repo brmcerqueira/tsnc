@@ -9,7 +9,7 @@ use swc_ecma_ast::{FnDecl, Pat};
 pub(super) fn visit_fn_decl<'c>(
     visitor: &mut MLIRCodegenVisitor<'c>,
     node: &FnDecl,
-) -> Result<Value<'c, 'c>> {
+) -> Result<Option<Value<'c, 'c>>> {
     let result_type = parse_type(visitor.context, &node.function.return_type);
     let result_types = if result_type.is_none() {
         vec![]
@@ -41,5 +41,5 @@ pub(super) fn visit_fn_decl<'c>(
     //TODO: fazer uma passagem antes para carregas as funcoes
     //visitor.functions.insert(node.ident.sym.to_string(), node.clone());
 
-    Err(anyhow!("call_console_log don't have implementation"))
+    Ok(None)
 }

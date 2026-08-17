@@ -14,7 +14,7 @@ macro_rules! native_call {
             args: &Vec<Value>,
             object_name: &str,
             function_name: &str,
-        ) -> Result<Value<'c, 'c>> {
+        ) -> Result<Option<Value<'c, 'c>>> {
             $(
                 $(
                     if object_name == $object && function_name == $function {
