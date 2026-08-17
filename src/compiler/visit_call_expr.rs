@@ -1,13 +1,11 @@
-use super::mlir_codegen_visitor::{parse_type, MLIRCodegenVisitor};
+use super::mlir_codegen_visitor::{MLIRCodegenVisitor, parse_type};
 
 use super::native::native_call_resolver::native_call_resolver;
 use anyhow::{Result, anyhow};
-use melior::Context;
 use melior::dialect::func;
 use melior::ir::attribute::FlatSymbolRefAttribute;
-use melior::ir::r#type::IntegerType;
 use melior::ir::{BlockLike, Location, Type, Value};
-use swc_ecma_ast::{CallExpr, Callee, Expr, ExprOrSpread, MemberProp, TsKeywordTypeKind, TsType, TsTypeAnn};
+use swc_ecma_ast::{CallExpr, Callee, Expr, ExprOrSpread, MemberProp};
 
 pub(super) fn visit_call_expr<'c>(
     visitor: &mut MLIRCodegenVisitor<'c>,
