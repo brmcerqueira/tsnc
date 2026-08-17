@@ -10,5 +10,7 @@ pub(super) fn call_console_log<'c>(
         return Err(anyhow!("console.log expects exactly one argument"));
     }
 
+    //TODO: Criar um runtime em rust para chamar funcoes
+
     Err(anyhow!("call_console_log don't have implementation"))
 }

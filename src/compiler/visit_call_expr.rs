@@ -49,6 +49,7 @@ pub(super) fn visit_call_expr<'c>(
                             {
                                 None
                             }
+                            //TODO: converter para demais tipos primitivos
                             _ => Some(IntegerType::new(visitor.context, 64).into()),
                         },
                     })?
