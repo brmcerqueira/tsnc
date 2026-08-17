@@ -18,5 +18,6 @@ mod visit_bin_expr;
 mod visit_lit;
 mod visit_ident;
 mod visit_call_expr;
+mod native_call_resolver;
 
 pub use emit::emit;
