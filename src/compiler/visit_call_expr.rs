@@ -1,9 +1,9 @@
 use super::mlir_codegen_visitor::MLIRCodegenVisitor;
 use anyhow::{Result, anyhow};
-use melior::dialect::{arith, func};
-use melior::ir::attribute::{FlatSymbolRefAttribute, IntegerAttribute};
+use melior::dialect::func;
+use melior::ir::attribute::FlatSymbolRefAttribute;
 use melior::ir::r#type::IntegerType;
-use melior::ir::{BlockLike, Location, Value};
+use melior::ir::{BlockLike, Location, Type, Value};
 use swc_ecma_ast::{CallExpr, Callee, Expr, ExprOrSpread, MemberProp, TsKeywordTypeKind, TsType};
 
 pub(super) fn visit_call_expr<'c>(
@@ -31,24 +31,25 @@ pub(super) fn visit_call_expr<'c>(
             }
             Expr::Ident(ident) => {
                 let name = ident.sym.as_ref();
-                let result_types = visitor
+                let result_types: Vec<Type> = visitor
                     .functions
                     .get(name)
                     .copied()
                     .ok_or_else(|| anyhow!("unknown function: {}", name))
                     .map(|function| match &function.function.return_type {
-                        None => vec![],
+                        None => None,
                         Some(ann) => match ann.type_ann.as_ref() {
-                            TsType::TsKeywordType(kw) => {
-                                if kw.kind == TsKeywordTypeKind::TsVoidKeyword {
-                                    vec![]
-                                } else {
-                                    vec![IntegerType::new(visitor.context, 64).into()]
-                                }
+                            TsType::TsKeywordType(kw)
+                                if kw.kind == TsKeywordTypeKind::TsVoidKeyword =>
+                            {
+                                None
                             }
-                            _ => vec![IntegerType::new(visitor.context, 64).into()],
+                            _ => Some(IntegerType::new(visitor.context, 64).into()),
                         },
-                    })?;
+                    })?
+                    .into_iter()
+                    .collect();
+
                 Ok(visitor
                     .block
                     .append_operation(func::call(
