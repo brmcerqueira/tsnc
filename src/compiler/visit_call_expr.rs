@@ -1,6 +1,6 @@
-use super::mlir_codegen_visitor::{MLIRCodegenVisitor, parse_type};
-
+use super::mlir_codegen_visitor::MLIRCodegenVisitor;
 use super::native::native_call_resolver::native_call_resolver;
+use super::parse_type::parse_type;
 use anyhow::{Result, anyhow};
 use melior::dialect::func;
 use melior::ir::attribute::FlatSymbolRefAttribute;
@@ -44,17 +44,19 @@ pub(super) fn visit_call_expr<'c>(
                     .into_iter()
                     .collect();
 
-                Ok(Some(visitor
-                    .block
-                    .append_operation(func::call(
-                        visitor.context,
-                        FlatSymbolRefAttribute::new(visitor.context, name),
-                        &args,
-                        &result_types,
-                        Location::unknown(visitor.context),
-                    ))
-                    .result(0)?
-                    .into()))
+                Ok(Some(
+                    visitor
+                        .block
+                        .append_operation(func::call(
+                            visitor.context,
+                            FlatSymbolRefAttribute::new(visitor.context, name),
+                            &args,
+                            &result_types,
+                            Location::unknown(visitor.context),
+                        ))
+                        .result(0)?
+                        .into(),
+                ))
             }
             _ => Err(anyhow!("unsupported callee expression")),
         },

@@ -1,4 +1,5 @@
-use super::mlir_codegen_visitor::{MLIRCodegenVisitor, parse_type};
+use super::mlir_codegen_visitor::MLIRCodegenVisitor;
+use super::parse_type::parse_type;
 use anyhow::Result;
 use melior::dialect::func::func;
 use melior::ir::attribute::{StringAttribute, TypeAttribute};
@@ -27,6 +28,7 @@ pub(super) fn visit_fn_decl<'c>(
         })
         .collect();
 
+    //TODO: preencher o region
     let region = Region::new();
 
     visitor.block.append_operation(func(

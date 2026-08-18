@@ -3,54 +3,36 @@ use super::visit_call_expr::visit_call_expr;
 use super::visit_fn_decl::visit_fn_decl;
 use super::visit_ident::visit_ident;
 use super::visit_lit::visit_number;
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use melior::Context;
-use melior::ir::r#type::IntegerType;
-use melior::ir::{Block, Type, Value};
+use melior::ir::{Block, Value};
 use std::collections::HashMap;
-use swc_ecma_ast::{
-    BinExpr, CallExpr, Expr, FnDecl, Ident, Number, TsKeywordTypeKind, TsType, TsTypeAnn,
-};
-use swc_ecma_visit::{Visit, VisitWith};
+use swc_ecma_ast::{BinExpr, CallExpr, FnDecl, Ident, Number};
+use swc_ecma_visit::Visit;
 
 pub(super) type Vars<'c> = HashMap<String, Value<'c, 'c>>;
 pub(super) type Functions<'c> = HashMap<String, &'c FnDecl>;
 
 pub(super) struct MLIRCodegenVisitor<'c> {
     pub(super) context: &'c Context,
-    pub(super) block: &'c Block<'c>,
+    pub(super) block: Block<'c>,
     pub(super) vars: Vars<'c>,
     pub(super) functions: Functions<'c>,
     pub(super) last_value: Result<Option<Value<'c, 'c>>>,
 }
 
-pub(super) fn parse_type<'c>(
-    context: &'c Context,
-    ts_type: &Option<Box<TsTypeAnn>>,
-) -> Option<Type<'c>> {
-    match ts_type {
-        None => None,
-        Some(ann) => match ann.type_ann.as_ref() {
-            TsType::TsKeywordType(kw) if kw.kind == TsKeywordTypeKind::TsVoidKeyword => None,
-            //TODO: converter para demais tipos primitivos
-            _ => Some(IntegerType::new(context, 64).into()),
-        },
-    }
-}
 
 impl<'c> MLIRCodegenVisitor<'c> {
-    pub(super) fn get_last_value(&mut self, expr: &Expr) -> Result<Value<'c, 'c>> {
-        expr.visit_with(self);
-        match &self.last_value {
-            Ok(v) => match v {
-                Some(v) => Ok(*v),
-                None => Err(anyhow!("last_value is empty")),
-            },
-            Err(e) => Err(anyhow!("{e}")),
+    pub(super) fn new(context: &'c Context) -> Self {
+        Self {
+            context,
+            block: Block::new(&[]),
+            vars: HashMap::new(),
+            functions: HashMap::new(),
+            last_value: Ok(None),
         }
     }
 }
-
 macro_rules! visit {
     ($method:ident, $node_type:ty) => {
         fn $method(&mut self, node: &$node_type) {
