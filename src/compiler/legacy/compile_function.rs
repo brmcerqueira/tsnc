@@ -1,7 +1,7 @@
 use crate::compiler::legacy::compiler::{Compiler, to_var};
 use crate::compiler::legacy::is_void_function::is_void_function;
 use crate::compiler::legacy::stmt_control::StmtControl;
-use crate::compiler::mlir_codegen_visitor::Vars;
+use crate::compiler::mlir_block_codegen_visitor::Vars;
 use anyhow::anyhow;
 use melior::dialect::func::{func, r#return};
 use melior::ir::attribute::{StringAttribute, TypeAttribute};

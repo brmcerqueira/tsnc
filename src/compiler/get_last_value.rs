@@ -1,10 +1,10 @@
-use super::mlir_codegen_visitor::MLIRCodegenVisitor;
+use super::mlir_block_codegen_visitor::MLIRBlockCodegenVisitor;
 use anyhow::{Result, anyhow};
 use melior::ir::Value;
 use swc_ecma_ast::Expr;
 use swc_ecma_visit::VisitWith;
 
-impl<'c> MLIRCodegenVisitor<'c> {
+impl<'c> MLIRBlockCodegenVisitor<'c> {
     pub(super) fn get_last_value(&mut self, expr: &Expr) -> Result<Value<'c, 'c>> {
         expr.visit_with(self);
         match &self.last_value {

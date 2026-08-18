@@ -1,4 +1,4 @@
-mod mlir_codegen_visitor;
+mod mlir_block_codegen_visitor;
 mod visit_bin_expr;
 mod visit_lit;
 mod visit_ident;

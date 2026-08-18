@@ -1,6 +1,6 @@
 use crate::compiler::legacy::compiler::{Compiler, to_var};
 use crate::compiler::legacy::stmt_control::StmtControl;
-use crate::compiler::mlir_codegen_visitor::Vars;
+use crate::compiler::mlir_block_codegen_visitor::Vars;
 use melior::dialect::{arith, cf};
 use melior::ir::r#type::IntegerType;
 use melior::ir::{Block, BlockLike};

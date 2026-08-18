@@ -14,7 +14,7 @@ use swc_ecma_visit::Visit;
 pub(super) type Vars<'c> = HashMap<String, Value<'c, 'c>>;
 pub(super) type Functions<'c> = HashMap<String, &'c FnDecl>;
 
-pub(super) struct MLIRCodegenVisitor<'c> {
+pub(super) struct MLIRBlockCodegenVisitor<'c> {
     pub(super) context: &'c Context,
     pub(super) block: Block<'c>,
     pub(super) vars: Vars<'c>,
@@ -22,7 +22,7 @@ pub(super) struct MLIRCodegenVisitor<'c> {
     pub(super) last_value: Result<Option<Value<'c, 'c>>>,
 }
 
-impl<'c> MLIRCodegenVisitor<'c> {
+impl<'c> MLIRBlockCodegenVisitor<'c> {
     pub(super) fn new(context: &'c Context) -> Self {
         Self {
             context,
@@ -69,7 +69,7 @@ macro_rules! visit {
     };
 }
 
-impl<'c> Visit for MLIRCodegenVisitor<'c> {
+impl<'c> Visit for MLIRBlockCodegenVisitor<'c> {
     visit!(visit_bin_expr, BinExpr);
     visit!(visit_call_expr, CallExpr);
     visit!(visit_ident, Ident);

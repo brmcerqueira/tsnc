@@ -1,4 +1,4 @@
-use super::mlir_codegen_visitor::MLIRCodegenVisitor;
+use super::mlir_block_codegen_visitor::MLIRBlockCodegenVisitor;
 use super::parse_type::parse_type;
 use anyhow::Result;
 use melior::dialect::func::func;
@@ -6,9 +6,10 @@ use melior::ir::attribute::{StringAttribute, TypeAttribute};
 use melior::ir::r#type::FunctionType;
 use melior::ir::{BlockLike, Location, Region, Type, Value};
 use swc_ecma_ast::{FnDecl, Pat};
+use swc_ecma_visit::VisitWith;
 
 pub(super) fn visit_fn_decl<'c>(
-    visitor: &mut MLIRCodegenVisitor<'c>,
+    visitor: &mut MLIRBlockCodegenVisitor<'c>,
     node: &FnDecl,
 ) -> Result<Option<Value<'c, 'c>>> {
     let result_type = parse_type(visitor.context, &node.function.return_type);
@@ -30,6 +31,8 @@ pub(super) fn visit_fn_decl<'c>(
 
     //TODO: preencher o region
     let region = Region::new();
+    
+    node.visit_children_with(visitor);
 
     visitor.block.append_operation(func(
         visitor.context,

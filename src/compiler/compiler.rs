@@ -10,7 +10,7 @@ use std::path::Path;
 use std::process::Command;
 use swc_ecma_ast::Module;
 use swc_ecma_visit::VisitWith;
-use super::mlir_codegen_visitor::MLIRCodegenVisitor;
+use super::mlir_block_codegen_visitor::MLIRBlockCodegenVisitor;
 
 pub struct Compiler {
     context: Context,
@@ -34,7 +34,7 @@ impl Compiler {
     pub fn emit(self, module: &Module, output: &Path) -> anyhow::Result<()> {
         let mut mlir_module = MlirModule::new(Location::unknown(&self.context));
 
-        let mut mlir_codegen_visitor = MLIRCodegenVisitor::new(&self.context);
+        let mut mlir_codegen_visitor = MLIRBlockCodegenVisitor::new(&self.context);
 
         module.visit_with(&mut mlir_codegen_visitor);
 
