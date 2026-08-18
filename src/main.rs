@@ -12,7 +12,9 @@ fn main() -> anyhow::Result<()> {
 
     let ts_file = &args[1];
 
-    compiler::emit(
+    let compiler = compiler::Compiler::new();
+
+    compiler.emit(
         &parser::parse_typescript(ts_file)?,
         &Path::new(ts_file).with_extension(""),
     )?;

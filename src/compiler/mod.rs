@@ -11,3 +11,4 @@ mod parse_type;
 mod compiler;
 
 pub use legacy::emit::emit;
+pub use compiler::Compiler;

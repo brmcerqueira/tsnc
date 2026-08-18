@@ -1,3 +1,4 @@
+use std::fs::remove_file;
 use anyhow::anyhow;
 use melior::dialect::DialectRegistry;
 use melior::ir::operation::OperationLike;
@@ -9,14 +10,14 @@ use std::path::Path;
 use std::process::Command;
 use swc_ecma_ast::Module;
 use swc_ecma_visit::VisitWith;
-use crate::compiler::mlir_codegen_visitor::MLIRCodegenVisitor;
+use super::mlir_codegen_visitor::MLIRCodegenVisitor;
 
-pub(super) struct Compiler {
+pub struct Compiler {
     context: Context,
 }
 
 impl Compiler {
-    pub(super) fn new() -> Self {
+    pub fn new() -> Self {
         let registry = DialectRegistry::new();
         register_all_dialects(&registry);
 
@@ -30,7 +31,7 @@ impl Compiler {
         }
     }
 
-    pub fn emit(&mut self, module: &Module, output: &Path) -> anyhow::Result<()> {
+    pub fn emit(self, module: &Module, output: &Path) -> anyhow::Result<()> {
         let mut mlir_module = MlirModule::new(Location::unknown(&self.context));
 
         let mut mlir_codegen_visitor = MLIRCodegenVisitor::new(&self.context);
@@ -83,7 +84,7 @@ impl Compiler {
             .arg(output)
             .status()?;
 
-        std::fs::remove_file(&obj_path)?;
+        remove_file(&obj_path)?;
 
         if !status.success() {
             return Err(anyhow!("linker failed with status: {status}"));
