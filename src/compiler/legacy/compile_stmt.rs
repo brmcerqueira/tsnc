@@ -3,7 +3,7 @@ use crate::compiler::legacy::stmt_control::StmtControl;
 use melior::dialect::func::r#return;
 use melior::ir::{Block, BlockLike};
 use swc_ecma_ast::{Decl, Pat, Stmt};
-use crate::compiler::mlir_void_codegen_visitor::Vars;
+use crate::compiler::mlir_result_codegen_visitor::Vars;
 
 impl<'c> Compiler<'c> {
     pub(in crate::compiler) fn compile_stmt(

@@ -11,6 +11,7 @@ mod parse_type;
 mod compiler;
 mod mlir_void_codegen_visitor;
 mod visit_module;
+mod mlir_result_codegen_visitor;
 
 pub use legacy::emit::emit;
 pub use compiler::Compiler;

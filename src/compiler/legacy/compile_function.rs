@@ -7,7 +7,7 @@ use melior::ir::attribute::{StringAttribute, TypeAttribute};
 use melior::ir::r#type::FunctionType;
 use melior::ir::{Block, BlockLike, Region, RegionLike};
 use swc_ecma_ast::{FnDecl, Pat};
-use crate::compiler::mlir_void_codegen_visitor::Vars;
+use crate::compiler::mlir_result_codegen_visitor::Vars;
 
 impl<'c> Compiler<'c> {
     pub(in crate::compiler) fn compile_function(&mut self, function: &FnDecl) -> anyhow::Result<()> {

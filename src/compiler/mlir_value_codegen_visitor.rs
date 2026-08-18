@@ -1,4 +1,4 @@
-use super::mlir_void_codegen_visitor::{MLIRResultCodegenVisitor, WithArguments};
+use super::mlir_result_codegen_visitor::{MLIRResultCodegenVisitor, WithArguments};
 use super::visit_bin_expr::visit_bin_expr;
 use super::visit_call_expr::visit_call_expr;
 use super::visit_ident::visit_ident;
