@@ -1,9 +1,9 @@
 use crate::compiler::legacy::compiler::Compiler;
 use crate::compiler::legacy::stmt_control::StmtControl;
-use crate::compiler::mlir_block_codegen_visitor::Vars;
 use melior::dialect::func::r#return;
 use melior::ir::{Block, BlockLike};
 use swc_ecma_ast::{Decl, Pat, Stmt};
+use crate::compiler::mlir_codegen_visitor::Vars;
 
 impl<'c> Compiler<'c> {
     pub(in crate::compiler) fn compile_stmt(

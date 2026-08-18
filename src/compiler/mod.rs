@@ -9,6 +9,7 @@ mod legacy;
 mod get_last_value;
 mod parse_type;
 mod compiler;
+mod mlir_codegen_visitor;
 
 pub use legacy::emit::emit;
 pub use compiler::Compiler;
