@@ -1,4 +1,4 @@
-use super::compiler::Compiler;
+use crate::compiler::legacy::compiler::Compiler;
 use anyhow::{Result, anyhow};
 use melior::{
     Context, ExecutionEngine,

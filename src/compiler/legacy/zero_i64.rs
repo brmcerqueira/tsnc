@@ -1,10 +1,10 @@
-use super::compiler::{Compiler, to_var};
+use crate::compiler::legacy::compiler::{Compiler, to_var};
 use melior::dialect::arith;
 use melior::ir::attribute::IntegerAttribute;
 use melior::ir::{Block, BlockLike, Value};
 
 impl<'c> Compiler<'c> {
-    pub(super) fn zero_i64(&self, block: &Block<'c>) -> Value<'c, 'c> {
+    pub(in crate::compiler) fn zero_i64(&self, block: &Block<'c>) -> Value<'c, 'c> {
         unsafe {
             to_var(
                 block

@@ -1,16 +1,16 @@
-use crate::compiler::compiler::{Compiler, to_var};
-use crate::compiler::is_void_function::is_void_function;
-use crate::compiler::stmt_control::StmtControl;
+use crate::compiler::legacy::compiler::{Compiler, to_var};
+use crate::compiler::legacy::is_void_function::is_void_function;
+use crate::compiler::legacy::stmt_control::StmtControl;
+use crate::compiler::mlir_codegen_visitor::Vars;
 use anyhow::anyhow;
 use melior::dialect::func::{func, r#return};
 use melior::ir::attribute::{StringAttribute, TypeAttribute};
 use melior::ir::r#type::FunctionType;
 use melior::ir::{Block, BlockLike, Region, RegionLike};
 use swc_ecma_ast::{FnDecl, Pat};
-use crate::compiler::mlir_codegen_visitor::Vars;
 
 impl<'c> Compiler<'c> {
-    pub(super) fn compile_function(&mut self, function: &FnDecl) -> anyhow::Result<()> {
+    pub(in crate::compiler) fn compile_function(&mut self, function: &FnDecl) -> anyhow::Result<()> {
         let params: Vec<_> = function
             .function
             .params

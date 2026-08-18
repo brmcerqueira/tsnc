@@ -1,13 +1,13 @@
-use super::compiler::{Compiler, to_var};
-use super::stmt_control::StmtControl;
+use crate::compiler::legacy::compiler::{Compiler, to_var};
+use crate::compiler::legacy::stmt_control::StmtControl;
+use crate::compiler::mlir_codegen_visitor::Vars;
 use melior::dialect::{arith, cf};
 use melior::ir::r#type::IntegerType;
 use melior::ir::{Block, BlockLike};
 use swc_ecma_ast::{IfStmt, Stmt};
-use crate::compiler::mlir_codegen_visitor::Vars;
 
 impl<'c> Compiler<'c> {
-    pub(super) fn compile_if_stmt(
+    pub(in crate::compiler) fn compile_if_stmt(
         &mut self,
         current_block: &Block<'c>,
         if_stmt: &IfStmt,

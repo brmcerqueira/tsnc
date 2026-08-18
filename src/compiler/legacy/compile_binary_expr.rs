@@ -1,11 +1,11 @@
-use super::compiler::{Compiler, to_var};
+use crate::compiler::legacy::compiler::{Compiler, to_var};
 use anyhow::anyhow;
 use melior::dialect::arith;
 use melior::ir::{Block, BlockLike, Operation, Value};
 use swc_ecma_ast::BinaryOp;
 
 impl<'c> Compiler<'c> {
-    pub(super) fn compile_binary_expr(
+    pub(in crate::compiler) fn compile_binary_expr(
         &self,
         block: &Block<'c>,
         op: BinaryOp,

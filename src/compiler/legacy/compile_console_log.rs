@@ -1,4 +1,4 @@
-use super::compiler::{Compiler, to_var};
+use crate::compiler::legacy::compiler::{Compiler, to_var};
 use anyhow::anyhow;
 use melior::dialect::llvm::attributes::{Linkage, linkage};
 use melior::dialect::llvm::r#type::{array, function};
@@ -12,7 +12,7 @@ use melior::ir::r#type::IntegerType;
 use melior::ir::{Attribute, Block, BlockLike, Identifier, Region, Type, Value};
 
 impl<'c> Compiler<'c> {
-    pub(super) fn compile_console_log(
+    pub(in crate::compiler) fn compile_console_log(
         &mut self,
         block: &Block<'c>,
         args: &[Value<'c, 'c>],

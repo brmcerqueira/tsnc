@@ -1,11 +1,11 @@
-use super::compiler::{Compiler, to_var};
+use crate::compiler::legacy::compiler::{Compiler, to_var};
 use anyhow::anyhow;
 use melior::dialect::func;
 use melior::ir::attribute::FlatSymbolRefAttribute;
 use melior::ir::{Block, BlockLike, Value};
 
 impl<'c> Compiler<'c> {
-    pub(super) fn compile_function_call(
+    pub(in crate::compiler) fn compile_function_call(
         &self,
         block: &Block<'c>,
         name: &str,

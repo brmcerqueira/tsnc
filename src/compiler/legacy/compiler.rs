@@ -1,4 +1,4 @@
-use super::is_void_function::is_void_function;
+use crate::compiler::legacy::is_void_function::is_void_function;
 use melior::Context;
 use melior::dialect::llvm::r#type::pointer;
 use melior::ir::r#type::IntegerType;
@@ -7,25 +7,25 @@ use std::collections::HashMap;
 use swc_ecma_ast::{Decl, Module, ModuleItem, Stmt};
 
 
-pub(super) unsafe fn to_var<'c, 'a>(val: Value<'c, 'a>) -> Value<'c, 'c> {
+pub(in crate::compiler) unsafe fn to_var<'c, 'a>(val: Value<'c, 'a>) -> Value<'c, 'c> {
     unsafe { std::mem::transmute(val) }
 }
 
-pub(super) struct Compiler<'c> {
-    pub(super) context: &'c Context,
-    pub(super) location: Location<'c>,
-    pub(super) mlir_module: MlirModule<'c>,
-    pub(super) i64_type: Type<'c>,
-    pub(super) i32_type: Type<'c>,
-    pub(super) ptr_type: Type<'c>,
-    pub(super) fn_returns: HashMap<String, bool>,
-    pub(super) printf_declared: bool,
-    pub(super) format_declared: bool,
-    pub(super) pending_blocks: Vec<melior::ir::Block<'c>>,
+pub(in crate::compiler) struct Compiler<'c> {
+    pub(in crate::compiler) context: &'c Context,
+    pub(in crate::compiler) location: Location<'c>,
+    pub(in crate::compiler) mlir_module: MlirModule<'c>,
+    pub(in crate::compiler) i64_type: Type<'c>,
+    pub(in crate::compiler) i32_type: Type<'c>,
+    pub(in crate::compiler) ptr_type: Type<'c>,
+    pub(in crate::compiler) fn_returns: HashMap<String, bool>,
+    pub(in crate::compiler) printf_declared: bool,
+    pub(in crate::compiler) format_declared: bool,
+    pub(in crate::compiler) pending_blocks: Vec<melior::ir::Block<'c>>,
 }
 
 impl<'c> Compiler<'c> {
-    pub(super) fn new(context: &'c Context, module: &Module) -> Self {
+    pub(in crate::compiler) fn new(context: &'c Context, module: &Module) -> Self {
         let fn_returns = module
             .body
             .iter()

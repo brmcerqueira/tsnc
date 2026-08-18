@@ -1,14 +1,14 @@
-use crate::compiler::compiler::Compiler;
-use crate::compiler::stmt_control::StmtControl;
+use crate::compiler::legacy::compiler::Compiler;
+use crate::compiler::legacy::stmt_control::StmtControl;
+use crate::compiler::mlir_codegen_visitor::Vars;
 use melior::dialect::func::{func, r#return};
 use melior::ir::attribute::{StringAttribute, TypeAttribute};
 use melior::ir::r#type::FunctionType;
 use melior::ir::{Block, BlockLike, Region, RegionLike};
 use swc_ecma_ast::Stmt;
-use crate::compiler::mlir_codegen_visitor::Vars;
 
 impl<'c> Compiler<'c> {
-    pub(super) fn compile_main_entry(&mut self, stmts: &[&Stmt]) -> anyhow::Result<()> {
+    pub(in crate::compiler) fn compile_main_entry(&mut self, stmts: &[&Stmt]) -> anyhow::Result<()> {
         let mut all_blocks: Vec<Block<'c>> = vec![];
         let mut current = Block::new(&[]);
         let mut vars: Vars<'c> = std::collections::HashMap::new();
