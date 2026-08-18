@@ -11,15 +11,15 @@ use super::visit_module::visit_module;
 pub(super) type Vars<'c> = HashMap<String, Value<'c, 'c>>;
 pub(super) type Functions<'c> = HashMap<String, &'c FnDecl>;
 
-pub(super) struct MLIRGenericCodegenVisitor<'c, T> {
+pub(super) struct MLIRResultCodegenVisitor<'c, T> {
     pub(super) context: &'c Context,
     pub(super) block: Block<'c>,
     pub(super) vars: Vars<'c>,
     pub(super) functions: Functions<'c>,
-    pub(super) last_value: Result<T>,
+    pub(super) result: Result<T>,
 }
 
-pub(super) type MLIRCodegenVisitor<'c> = MLIRGenericCodegenVisitor<'c, ()>;
+pub(super) type MLIRVoidCodegenVisitor<'c> = MLIRResultCodegenVisitor<'c, ()>;
 
 pub(super) trait WithArguments<'c>: Sized {
     fn with_arguments(
@@ -50,19 +50,19 @@ pub(super) trait WithArguments<'c>: Sized {
     }
 }
 
-impl<'c> MLIRCodegenVisitor<'c> {
+impl<'c> MLIRVoidCodegenVisitor<'c> {
     pub(super) fn new(context: &'c Context) -> Self {
         Self {
             context,
             block: Block::new(&[]),
             vars: HashMap::new(),
             functions: HashMap::new(),
-            last_value: Ok(()),
+            result: Ok(()),
         }
     }
 }
 
-impl<'c> WithArguments<'c> for MLIRCodegenVisitor<'c> {
+impl<'c> WithArguments<'c> for MLIRVoidCodegenVisitor<'c> {
     fn with_arguments(
         context: &'c Context,
         arguments: &[(String, &Option<Box<TsTypeAnn>>, Location<'c>)],
@@ -74,7 +74,7 @@ impl<'c> WithArguments<'c> for MLIRCodegenVisitor<'c> {
             block,
             vars,
             functions: HashMap::new(),
-            last_value: Ok(()),
+            result: Ok(()),
         }
     }
 }
@@ -83,12 +83,12 @@ impl<'c> WithArguments<'c> for MLIRCodegenVisitor<'c> {
 macro_rules! visit {
     ($method:ident, $node_type:ty) => {
         fn $method(&mut self, node: &$node_type) {
-            self.last_value = $method(self, node);
+            self.result = $method(self, node);
         }
     };
 }
 
-impl<'c> Visit for MLIRCodegenVisitor<'c> {
+impl<'c> Visit for MLIRVoidCodegenVisitor<'c> {
     visit!(visit_fn_decl, FnDecl);
     visit!(visit_module, Module);
 }

@@ -1,11 +1,11 @@
-use super::mlir_block_codegen_visitor::MLIRBlockCodegenVisitor;
+use super::mlir_value_codegen_visitor::MLIRValueCodegenVisitor;
 use anyhow::{Result, anyhow};
 use melior::dialect::arith;
 use melior::ir::r#type::IntegerType;
 use melior::ir::{BlockLike, Location, Operation, Value};
 use swc_ecma_ast::{BinExpr, BinaryOp};
 
-impl<'c> MLIRBlockCodegenVisitor<'c> {
+impl<'c> MLIRValueCodegenVisitor<'c> {
     fn comparison_operation(
         &mut self,
         predicate: arith::CmpiPredicate,
@@ -30,7 +30,7 @@ impl<'c> MLIRBlockCodegenVisitor<'c> {
 }
 
 pub(super) fn visit_bin_expr<'c>(
-    visitor: &mut MLIRBlockCodegenVisitor<'c>,
+    visitor: &mut MLIRValueCodegenVisitor<'c>,
     node: &BinExpr,
 ) -> Result<Option<Value<'c, 'c>>> {
     let lhs = visitor.get_last_value(&node.left)?;

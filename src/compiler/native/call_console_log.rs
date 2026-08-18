@@ -1,9 +1,9 @@
 use anyhow::{Result, anyhow};
 use melior::ir::Value;
-use crate::compiler::mlir_block_codegen_visitor::MLIRBlockCodegenVisitor;
+use crate::compiler::mlir_value_codegen_visitor::MLIRValueCodegenVisitor;
 
 pub(super) fn call_console_log<'c>(
-    visitor: &mut MLIRBlockCodegenVisitor<'c>,
+    visitor: &mut MLIRValueCodegenVisitor<'c>,
     args: &Vec<Value>,
 ) -> Result<Option<Value<'c, 'c>>> {
     if args.len() != 1 {

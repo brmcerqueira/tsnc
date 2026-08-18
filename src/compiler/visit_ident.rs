@@ -1,10 +1,10 @@
-use super::mlir_block_codegen_visitor::MLIRBlockCodegenVisitor;
+use super::mlir_value_codegen_visitor::MLIRValueCodegenVisitor;
 use anyhow::{anyhow, Result};
 use melior::ir::Value;
 use swc_ecma_ast::Ident;
 
 pub(super) fn visit_ident<'c>(
-    visitor: &MLIRBlockCodegenVisitor<'c>,
+    visitor: &MLIRValueCodegenVisitor<'c>,
     node: &Ident,
 ) -> Result<Option<Value<'c, 'c>>> {
     Ok(Some(visitor.vars

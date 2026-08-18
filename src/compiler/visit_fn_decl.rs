@@ -1,4 +1,4 @@
-use super::mlir_codegen_visitor::MLIRCodegenVisitor;
+use super::mlir_void_codegen_visitor::MLIRVoidCodegenVisitor;
 use super::parse_type::parse_type;
 use anyhow::Result;
 use melior::dialect::func::func;
@@ -9,7 +9,7 @@ use swc_ecma_ast::{FnDecl, Pat};
 use swc_ecma_visit::VisitWith;
 
 pub(super) fn visit_fn_decl<'c>(
-    visitor: &mut MLIRCodegenVisitor<'c>,
+    visitor: &mut MLIRVoidCodegenVisitor<'c>,
     node: &FnDecl,
 ) -> Result<()> {
     let result_type = parse_type(visitor.context, &node.function.return_type);

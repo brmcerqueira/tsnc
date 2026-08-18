@@ -10,7 +10,7 @@ macro_rules! native_call {
         ),* $(,)?
     ) => {
         pub fn native_call_resolver<'c>(
-            visitor: &mut MLIRBlockCodegenVisitor<'c>,
+            visitor: &mut MLIRValueCodegenVisitor<'c>,
             args: &Vec<Value>,
             object_name: &str,
             function_name: &str,

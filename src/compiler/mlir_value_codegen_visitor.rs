@@ -1,4 +1,4 @@
-use super::mlir_codegen_visitor::{MLIRGenericCodegenVisitor, WithArguments};
+use super::mlir_void_codegen_visitor::{MLIRResultCodegenVisitor, WithArguments};
 use super::visit_bin_expr::visit_bin_expr;
 use super::visit_call_expr::visit_call_expr;
 use super::visit_ident::visit_ident;
@@ -10,21 +10,21 @@ use std::collections::HashMap;
 use swc_ecma_ast::{BinExpr, CallExpr, Ident, Number, TsTypeAnn};
 use swc_ecma_visit::Visit;
 
-pub(super) type MLIRBlockCodegenVisitor<'c> = MLIRGenericCodegenVisitor<'c, Option<Value<'c, 'c>>>;
+pub(super) type MLIRValueCodegenVisitor<'c> = MLIRResultCodegenVisitor<'c, Option<Value<'c, 'c>>>;
 
-impl<'c> MLIRBlockCodegenVisitor<'c> {
+impl<'c> MLIRValueCodegenVisitor<'c> {
     pub(super) fn new(context: &'c Context) -> Self {
         Self {
             context,
             block: Block::new(&[]),
             vars: HashMap::new(),
             functions: HashMap::new(),
-            last_value: Ok(None),
+            result: Ok(None),
         }
     }
 }
 
-impl<'c> WithArguments<'c> for MLIRBlockCodegenVisitor<'c> {
+impl<'c> WithArguments<'c> for MLIRValueCodegenVisitor<'c> {
     fn with_arguments(
         context: &'c Context,
         arguments: &[(String, &Option<Box<TsTypeAnn>>, Location<'c>)],
@@ -36,12 +36,12 @@ impl<'c> WithArguments<'c> for MLIRBlockCodegenVisitor<'c> {
             block,
             vars,
             functions: HashMap::new(),
-            last_value: Ok(None),
+            result: Ok(None),
         }
     }
 }
 
-impl<'c> Visit for MLIRBlockCodegenVisitor<'c> {
+impl<'c> Visit for MLIRValueCodegenVisitor<'c> {
     visit!(visit_bin_expr, BinExpr);
     visit!(visit_call_expr, CallExpr);
     visit!(visit_ident, Ident);

@@ -1,4 +1,4 @@
-use super::mlir_block_codegen_visitor::MLIRBlockCodegenVisitor;
+use super::mlir_value_codegen_visitor::MLIRValueCodegenVisitor;
 use anyhow::{Result, anyhow};
 use melior::dialect::DialectRegistry;
 use melior::ir::operation::OperationLike;
@@ -34,7 +34,7 @@ impl Compiler {
     pub fn emit(self, module: &Module, output: &Path) -> Result<()> {
         let mut mlir_module = MlirModule::new(Location::unknown(&self.context));
 
-        let mut mlir_codegen_visitor = MLIRBlockCodegenVisitor::new(&self.context);
+        let mut mlir_codegen_visitor = MLIRValueCodegenVisitor::new(&self.context);
 
         module.visit_with(&mut mlir_codegen_visitor);
 
