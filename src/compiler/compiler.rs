@@ -1,16 +1,16 @@
-use std::fs::remove_file;
-use anyhow::anyhow;
+use super::mlir_block_codegen_visitor::MLIRBlockCodegenVisitor;
+use anyhow::{Result, anyhow};
 use melior::dialect::DialectRegistry;
 use melior::ir::operation::OperationLike;
 use melior::ir::{Location, Module as MlirModule};
 use melior::pass::PassManager;
 use melior::utility::{register_all_dialects, register_all_llvm_translations};
 use melior::{Context, ExecutionEngine, pass};
+use std::fs::remove_file;
 use std::path::Path;
 use std::process::Command;
 use swc_ecma_ast::Module;
 use swc_ecma_visit::VisitWith;
-use super::mlir_block_codegen_visitor::MLIRBlockCodegenVisitor;
 
 pub struct Compiler {
     context: Context,
@@ -31,7 +31,7 @@ impl Compiler {
         }
     }
 
-    pub fn emit(self, module: &Module, output: &Path) -> anyhow::Result<()> {
+    pub fn emit(self, module: &Module, output: &Path) -> Result<()> {
         let mut mlir_module = MlirModule::new(Location::unknown(&self.context));
 
         let mut mlir_codegen_visitor = MLIRBlockCodegenVisitor::new(&self.context);

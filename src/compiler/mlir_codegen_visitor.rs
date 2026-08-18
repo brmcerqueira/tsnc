@@ -4,8 +4,9 @@ use anyhow::Result;
 use melior::Context;
 use melior::ir::{Block, BlockLike, Location, Value};
 use std::collections::HashMap;
-use swc_ecma_ast::{FnDecl, TsTypeAnn};
+use swc_ecma_ast::{FnDecl, Module, TsTypeAnn};
 use swc_ecma_visit::Visit;
+use super::visit_module::visit_module;
 
 pub(super) type Vars<'c> = HashMap<String, Value<'c, 'c>>;
 pub(super) type Functions<'c> = HashMap<String, &'c FnDecl>;
@@ -89,4 +90,5 @@ macro_rules! visit {
 
 impl<'c> Visit for MLIRCodegenVisitor<'c> {
     visit!(visit_fn_decl, FnDecl);
+    visit!(visit_module, Module);
 }
