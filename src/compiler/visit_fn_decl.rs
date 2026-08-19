@@ -1,10 +1,12 @@
+use super::mlir_value_codegen_visitor::MLIRValueCodegenVisitor;
 use super::mlir_void_codegen_visitor::MLIRVoidCodegenVisitor;
 use super::parse_type::parse_type;
+use crate::compiler::mlir_result_codegen_visitor::build_block_and_vars;
 use anyhow::Result;
 use melior::dialect::func::func;
 use melior::ir::attribute::{StringAttribute, TypeAttribute};
 use melior::ir::r#type::FunctionType;
-use melior::ir::{BlockLike, Location, Region, Type};
+use melior::ir::{BlockLike, Location, Region, RegionLike};
 use swc_ecma_ast::{FnDecl, Pat};
 use swc_ecma_visit::VisitWith;
 
@@ -19,20 +21,35 @@ pub(super) fn visit_fn_decl<'c>(
         vec![result_type.unwrap()]
     };
 
-    let param_types: Vec<Type> = node
+    let arguments: Vec<_> = node
         .function
         .params
         .iter()
         .filter_map(|param| match &param.pat {
-            Pat::Ident(ident) => parse_type(visitor.context.mlir_context, &ident.type_ann),
+            Pat::Ident(ident) => Some((
+                ident.id.sym.to_string(),
+                parse_type(visitor.context.mlir_context, &ident.type_ann).unwrap(),
+                Location::unknown(visitor.context.mlir_context),
+            )),
             _ => None,
         })
         .collect();
 
-    //TODO: preencher o region
+    let param_types: Vec<_> = arguments
+        .iter()
+        .map(|(_, mlir_type, _)| *mlir_type)
+        .collect();
+
+    let (block, vars) = build_block_and_vars(&*arguments);
+
     let region = Region::new();
 
-    node.visit_children_with(visitor);
+    let block = region.append_block(block);
+
+    let mlir_value_codegen_visitor =
+        &mut MLIRValueCodegenVisitor::new(&visitor.context, block, vars);
+
+    node.visit_children_with(mlir_value_codegen_visitor);
 
     visitor.block.append_operation(func(
         visitor.context.mlir_context,
