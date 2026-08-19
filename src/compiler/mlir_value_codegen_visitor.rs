@@ -6,7 +6,6 @@ use super::visit_call_expr::visit_call_expr;
 use super::visit_ident::visit_ident;
 use super::visit_lit::visit_number;
 use crate::visit;
-use melior::Context;
 use melior::ir::{Block, Location, Value};
 use std::collections::HashMap;
 use swc_ecma_ast::{BinExpr, CallExpr, Ident, Number, TsTypeAnn};
@@ -15,9 +14,9 @@ use swc_ecma_visit::Visit;
 pub(super) type MLIRValueCodegenVisitor<'c> = MLIRResultCodegenVisitor<'c, Option<Value<'c, 'c>>>;
 
 impl<'c> MLIRValueCodegenVisitor<'c> {
-    pub(super) fn new(context: &'c Context) -> Self {
+    pub(super) fn new(context: &'c MLIRCodegenVisitorContext<'c>) -> Self {
         Self {
-            context: MLIRCodegenVisitorContext::new(context, HashMap::new()),
+            context,
             block: Block::new(&[]),
             vars: HashMap::new(),
             result: Ok(None),
@@ -27,13 +26,13 @@ impl<'c> MLIRValueCodegenVisitor<'c> {
 
 impl<'c> WithArguments<'c> for MLIRValueCodegenVisitor<'c> {
     fn with_arguments(
-        context: &'c Context,
+        context: &'c MLIRCodegenVisitorContext<'c>,
         arguments: &[(String, &Option<Box<TsTypeAnn>>, Location<'c>)],
     ) -> Self {
         let (block, vars) = Self::build_block_and_vars(context, arguments);
 
         Self {
-            context: MLIRCodegenVisitorContext::new(context, HashMap::new()),
+            context,
             block,
             vars,
             result: Ok(None),

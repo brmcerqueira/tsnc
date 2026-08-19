@@ -1,8 +1,7 @@
-use super::mlir_value_codegen_visitor::MLIRValueCodegenVisitor;
+use super::mlir_codegen_visitor::MLIRCodegenVisitor;
 use anyhow::{Result, anyhow};
 use melior::dialect::DialectRegistry;
 use melior::ir::operation::OperationLike;
-use melior::ir::{Location, Module as MlirModule};
 use melior::pass::PassManager;
 use melior::utility::{register_all_dialects, register_all_llvm_translations};
 use melior::{Context, ExecutionEngine, pass};
@@ -26,22 +25,18 @@ impl Compiler {
         context.load_all_available_dialects();
         register_all_llvm_translations(&context);
 
-        Self {
-            context,
-        }
+        Self { context }
     }
 
     pub fn emit(self, module: &Module, output: &Path) -> Result<()> {
-        let mut mlir_module = MlirModule::new(Location::unknown(&self.context));
-
-        let mut mlir_codegen_visitor = MLIRValueCodegenVisitor::new(&self.context);
+        let mut mlir_codegen_visitor = MLIRCodegenVisitor::new(&self.context);
 
         module.visit_with(&mut mlir_codegen_visitor);
 
-        if !mlir_module.as_operation().verify() {
+        if !mlir_codegen_visitor.mlir_module.as_operation().verify() {
             return Err(anyhow!(
                 "generated MLIR failed verification:\n{}",
-                mlir_module.as_operation()
+                mlir_codegen_visitor.mlir_module.as_operation()
             ));
         }
 
@@ -51,20 +46,20 @@ impl Compiler {
         pass_manager.add_pass(pass::conversion::create_func_to_llvm());
         pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
         pass_manager
-            .run(&mut mlir_module)
+            .run(&mut mlir_codegen_visitor.mlir_module)
             .map_err(|e| anyhow!("lowering failed: {e}"))?;
 
-        if !mlir_module.as_operation().verify() {
+        if !mlir_codegen_visitor.mlir_module.as_operation().verify() {
             return Err(anyhow!(
                 "lowered MLIR failed verification:\n{}",
-                mlir_module.as_operation()
+                mlir_codegen_visitor.mlir_module.as_operation()
             ));
         }
 
-        println!("{}", mlir_module.as_operation());
+        println!("{}", mlir_codegen_visitor.mlir_module.as_operation());
 
         let obj_path = output.with_extension("o");
-        let engine = ExecutionEngine::new(&mlir_module, 2, &[], true, true);
+        let engine = ExecutionEngine::new(&mlir_codegen_visitor.mlir_module, 2, &[], true, true);
         engine.dump_to_object_file(
             obj_path
                 .to_str()

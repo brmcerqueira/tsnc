@@ -5,6 +5,15 @@ use melior::ir::{Block, BlockLike, Location, Value};
 use std::collections::HashMap;
 use swc_ecma_ast::{FnDecl, TsTypeAnn};
 
+#[macro_export]
+macro_rules! visit {
+    ($method:ident, $node_type:ty) => {
+        fn $method(&mut self, node: &$node_type) {
+            self.result = $method(self, node);
+        }
+    };
+}
+
 pub(super) type Vars<'c> = HashMap<String, Value<'c, 'c>>;
 pub(super) type Functions<'c> = HashMap<String, &'c FnDecl>;
 
@@ -23,7 +32,7 @@ impl<'c> MLIRCodegenVisitorContext<'c> {
 }
 
 pub(super) struct MLIRResultCodegenVisitor<'c, T> {
-    pub(super) context: MLIRCodegenVisitorContext<'c>,
+    pub(super) context: &'c MLIRCodegenVisitorContext<'c>,
     pub(super) block: Block<'c>,
     pub(super) vars: Vars<'c>,
     pub(super) result: Result<T>,
@@ -31,19 +40,19 @@ pub(super) struct MLIRResultCodegenVisitor<'c, T> {
 
 pub(super) trait WithArguments<'c>: Sized {
     fn with_arguments(
-        context: &'c Context,
+        context: &'c MLIRCodegenVisitorContext<'c>,
         arguments: &[(String, &Option<Box<TsTypeAnn>>, Location<'c>)],
     ) -> Self;
 
     fn build_block_and_vars(
-        context: &'c Context,
+        context: &'c MLIRCodegenVisitorContext<'c>,
         arguments: &[(String, &Option<Box<TsTypeAnn>>, Location<'c>)],
     ) -> (Block<'c>, Vars<'c>) {
         let block = Block::new(
             &arguments
                 .iter()
                 .filter_map(|(_, ts_type, location)| {
-                    parse_type(context, ts_type).map(|ty| (ty, *location))
+                    parse_type(context.mlir_context, ts_type).map(|ty| (ty, *location))
                 })
                 .collect::<Vec<_>>(),
         );
