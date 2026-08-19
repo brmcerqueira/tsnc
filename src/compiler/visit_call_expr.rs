@@ -36,11 +36,14 @@ pub(super) fn visit_call_expr<'c>(
             Expr::Ident(ident) => {
                 let name = ident.sym.as_ref();
                 let result_types: Vec<Type> = visitor
+                    .context
                     .functions
                     .get(name)
                     .copied()
                     .ok_or_else(|| anyhow!("unknown function: {}", name))
-                    .map(|function| parse_type(visitor.context, &function.function.return_type))?
+                    .map(|function| {
+                        parse_type(visitor.context.mlir_context, &function.function.return_type)
+                    })?
                     .into_iter()
                     .collect();
 
@@ -48,11 +51,11 @@ pub(super) fn visit_call_expr<'c>(
                     visitor
                         .block
                         .append_operation(func::call(
-                            visitor.context,
-                            FlatSymbolRefAttribute::new(visitor.context, name),
+                            visitor.context.mlir_context,
+                            FlatSymbolRefAttribute::new(visitor.context.mlir_context, name),
                             &args,
                             &result_types,
-                            Location::unknown(visitor.context),
+                            Location::unknown(visitor.context.mlir_context),
                         ))
                         .result(0)?
                         .into(),

@@ -1,4 +1,6 @@
-use super::mlir_result_codegen_visitor::{MLIRResultCodegenVisitor, WithArguments};
+use super::mlir_result_codegen_visitor::{
+    MLIRCodegenVisitorContext, MLIRResultCodegenVisitor, WithArguments,
+};
 use super::visit_fn_decl::visit_fn_decl;
 use super::visit_module::visit_module;
 use melior::Context;
@@ -12,10 +14,9 @@ pub(super) type MLIRVoidCodegenVisitor<'c> = MLIRResultCodegenVisitor<'c, ()>;
 impl<'c> MLIRVoidCodegenVisitor<'c> {
     pub(super) fn new(context: &'c Context) -> Self {
         Self {
-            context,
+            context: MLIRCodegenVisitorContext::new(context, HashMap::new()),
             block: Block::new(&[]),
             vars: HashMap::new(),
-            functions: HashMap::new(),
             result: Ok(()),
         }
     }
@@ -29,10 +30,9 @@ impl<'c> WithArguments<'c> for MLIRVoidCodegenVisitor<'c> {
         let (block, vars) = Self::build_block_and_vars(context, arguments);
 
         Self {
-            context,
+            context: MLIRCodegenVisitorContext::new(context, HashMap::new()),
             block,
             vars,
-            functions: HashMap::new(),
             result: Ok(()),
         }
     }

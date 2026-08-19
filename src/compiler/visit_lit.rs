@@ -10,17 +10,19 @@ pub(super) fn visit_number<'c>(
     visitor: &MLIRValueCodegenVisitor<'c>,
     node: &Number,
 ) -> Result<Option<Value<'c, 'c>>> {
-    Ok(Some(visitor
-        .block
-        .append_operation(arith::constant(
-            visitor.context,
-            IntegerAttribute::new(
-                IntegerType::new(visitor.context, 64).into(),
-                node.value as i64,
-            )
+    Ok(Some(
+        visitor
+            .block
+            .append_operation(arith::constant(
+                visitor.context.mlir_context,
+                IntegerAttribute::new(
+                    IntegerType::new(visitor.context.mlir_context, 64).into(),
+                    node.value as i64,
+                )
+                .into(),
+                Location::unknown(visitor.context.mlir_context),
+            ))
+            .result(0)?
             .into(),
-            Location::unknown(visitor.context),
-        ))
-        .result(0)?
-        .into()))
+    ))
 }

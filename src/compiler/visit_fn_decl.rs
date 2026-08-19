@@ -12,7 +12,7 @@ pub(super) fn visit_fn_decl<'c>(
     visitor: &mut MLIRVoidCodegenVisitor<'c>,
     node: &FnDecl,
 ) -> Result<()> {
-    let result_type = parse_type(visitor.context, &node.function.return_type);
+    let result_type = parse_type(visitor.context.mlir_context, &node.function.return_type);
     let result_types = if result_type.is_none() {
         vec![]
     } else {
@@ -24,7 +24,7 @@ pub(super) fn visit_fn_decl<'c>(
         .params
         .iter()
         .filter_map(|param| match &param.pat {
-            Pat::Ident(ident) => parse_type(visitor.context, &ident.type_ann),
+            Pat::Ident(ident) => parse_type(visitor.context.mlir_context, &ident.type_ann),
             _ => None,
         })
         .collect();
@@ -35,12 +35,14 @@ pub(super) fn visit_fn_decl<'c>(
     node.visit_children_with(visitor);
 
     visitor.block.append_operation(func(
-        visitor.context,
-        StringAttribute::new(visitor.context, node.ident.sym.as_ref()),
-        TypeAttribute::new(FunctionType::new(visitor.context, &param_types, &result_types).into()),
+        visitor.context.mlir_context,
+        StringAttribute::new(visitor.context.mlir_context, node.ident.sym.as_ref()),
+        TypeAttribute::new(
+            FunctionType::new(visitor.context.mlir_context, &param_types, &result_types).into(),
+        ),
         region,
         &[],
-        Location::unknown(visitor.context),
+        Location::unknown(visitor.context.mlir_context),
     ));
 
     //TODO: fazer uma passagem antes para carregas as funcoes

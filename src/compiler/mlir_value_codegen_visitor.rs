@@ -1,4 +1,6 @@
-use super::mlir_result_codegen_visitor::{MLIRResultCodegenVisitor, WithArguments};
+use super::mlir_result_codegen_visitor::{
+    MLIRCodegenVisitorContext, MLIRResultCodegenVisitor, WithArguments,
+};
 use super::visit_bin_expr::visit_bin_expr;
 use super::visit_call_expr::visit_call_expr;
 use super::visit_ident::visit_ident;
@@ -15,10 +17,9 @@ pub(super) type MLIRValueCodegenVisitor<'c> = MLIRResultCodegenVisitor<'c, Optio
 impl<'c> MLIRValueCodegenVisitor<'c> {
     pub(super) fn new(context: &'c Context) -> Self {
         Self {
-            context,
+            context: MLIRCodegenVisitorContext::new(context, HashMap::new()),
             block: Block::new(&[]),
             vars: HashMap::new(),
-            functions: HashMap::new(),
             result: Ok(None),
         }
     }
@@ -32,10 +33,9 @@ impl<'c> WithArguments<'c> for MLIRValueCodegenVisitor<'c> {
         let (block, vars) = Self::build_block_and_vars(context, arguments);
 
         Self {
-            context,
+            context: MLIRCodegenVisitorContext::new(context, HashMap::new()),
             block,
             vars,
-            functions: HashMap::new(),
             result: Ok(None),
         }
     }

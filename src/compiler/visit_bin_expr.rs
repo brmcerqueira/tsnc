@@ -15,16 +15,16 @@ impl<'c> MLIRValueCodegenVisitor<'c> {
         Ok(arith::extui(
             self.block
                 .append_operation(arith::cmpi(
-                    self.context,
+                    self.context.mlir_context,
                     predicate,
                     lhs,
                     rhs,
-                    Location::unknown(self.context),
+                    Location::unknown(self.context.mlir_context),
                 ))
                 .result(0)?
                 .into(),
-            IntegerType::new(self.context, 64).into(),
-            Location::unknown(self.context),
+            IntegerType::new(self.context.mlir_context, 64).into(),
+            Location::unknown(self.context.mlir_context),
         ))
     }
 }
@@ -38,11 +38,11 @@ pub(super) fn visit_bin_expr<'c>(
     let rhs = visitor.get_last_value(&node.right)?;
 
     let operation = match node.op {
-        BinaryOp::Add => arith::addi(lhs, rhs, Location::unknown(visitor.context)),
-        BinaryOp::Sub => arith::subi(lhs, rhs, Location::unknown(visitor.context)),
-        BinaryOp::Mul => arith::muli(lhs, rhs, Location::unknown(visitor.context)),
-        BinaryOp::Div => arith::divsi(lhs, rhs, Location::unknown(visitor.context)),
-        BinaryOp::Mod => arith::remsi(lhs, rhs, Location::unknown(visitor.context)),
+        BinaryOp::Add => arith::addi(lhs, rhs, Location::unknown(visitor.context.mlir_context)),
+        BinaryOp::Sub => arith::subi(lhs, rhs, Location::unknown(visitor.context.mlir_context)),
+        BinaryOp::Mul => arith::muli(lhs, rhs, Location::unknown(visitor.context.mlir_context)),
+        BinaryOp::Div => arith::divsi(lhs, rhs, Location::unknown(visitor.context.mlir_context)),
+        BinaryOp::Mod => arith::remsi(lhs, rhs, Location::unknown(visitor.context.mlir_context)),
         BinaryOp::Lt => visitor.comparison_operation(arith::CmpiPredicate::Slt, lhs, rhs)?,
         BinaryOp::LtEq => visitor.comparison_operation(arith::CmpiPredicate::Sle, lhs, rhs)?,
         BinaryOp::Gt => visitor.comparison_operation(arith::CmpiPredicate::Sgt, lhs, rhs)?,
@@ -52,5 +52,7 @@ pub(super) fn visit_bin_expr<'c>(
         _ => return Err(anyhow!("unsupported binary operator: {:?}", node.op)),
     };
 
-    Ok(Some(visitor.block.append_operation(operation).result(0)?.into()))
+    Ok(Some(
+        visitor.block.append_operation(operation).result(0)?.into(),
+    ))
 }
