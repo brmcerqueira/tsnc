@@ -5,6 +5,6 @@ use crate::compiler::mlir_void_codegen_visitor::MLIRVoidCodegenVisitor;
 use super::mlir_codegen_visitor::MLIRCodegenVisitor;
 
 pub(super) fn visit_module(visitor: &mut MLIRCodegenVisitor, node: &Module) -> Result<()> {
-    node.visit_children_with(&mut MLIRVoidCodegenVisitor::new(&visitor.context));
+    node.visit_children_with(&mut MLIRVoidCodegenVisitor::new(&visitor.context, visitor.mlir_module.body()));
     Ok(())
 }

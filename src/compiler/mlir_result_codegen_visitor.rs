@@ -1,7 +1,7 @@
 use super::parse_type::parse_type;
 use melior::Context;
 use anyhow::Result;
-use melior::ir::{Block, BlockLike, Location, Value};
+use melior::ir::{Block, BlockLike, BlockRef, Location, Value};
 use std::collections::HashMap;
 use swc_ecma_ast::{FnDecl, TsTypeAnn};
 
@@ -33,7 +33,7 @@ impl<'c> MLIRCodegenVisitorContext<'c> {
 
 pub(super) struct MLIRResultCodegenVisitor<'c, T> {
     pub(super) context: &'c MLIRCodegenVisitorContext<'c>,
-    pub(super) block: Block<'c>,
+    pub(super) block: BlockRef<'c, 'c>,
     pub(super) vars: Vars<'c>,
     pub(super) result: Result<T>,
 }
@@ -47,7 +47,8 @@ pub(super) trait WithArguments<'c>: Sized {
     fn build_block_and_vars(
         context: &'c MLIRCodegenVisitorContext<'c>,
         arguments: &[(String, &Option<Box<TsTypeAnn>>, Location<'c>)],
-    ) -> (Block<'c>, Vars<'c>) {
+    ) -> (BlockRef<'c, 'c>, Vars<'c>) {
+        
         let block = Block::new(
             &arguments
                 .iter()
@@ -62,7 +63,10 @@ pub(super) trait WithArguments<'c>: Sized {
         for (index, (name, _, _)) in arguments.iter().enumerate() {
             vars.insert(name.to_string(), block.argument(index).unwrap().into());
         }
-
-        (block, vars)
+        
+        //TODO: Tentar remover esse unsafe depois
+        (unsafe {
+            BlockRef::from_raw(block.to_raw())
+        }, vars)
     }
 }

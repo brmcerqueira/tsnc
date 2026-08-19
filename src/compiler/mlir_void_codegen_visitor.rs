@@ -3,7 +3,7 @@ use super::mlir_result_codegen_visitor::{
 };
 use super::visit_fn_decl::visit_fn_decl;
 use crate::visit;
-use melior::ir::{Block, Location};
+use melior::ir::{Block, BlockRef, Location};
 use std::collections::HashMap;
 use swc_ecma_ast::{FnDecl, TsTypeAnn};
 use swc_ecma_visit::Visit;
@@ -11,10 +11,10 @@ use swc_ecma_visit::Visit;
 pub(super) type MLIRVoidCodegenVisitor<'c> = MLIRResultCodegenVisitor<'c, ()>;
 
 impl<'c> MLIRVoidCodegenVisitor<'c> {
-    pub(super) fn new(context: &'c MLIRCodegenVisitorContext<'c>) -> Self {
+    pub(super) fn new(context: &'c MLIRCodegenVisitorContext<'c>, block: BlockRef<'c, 'c>) -> Self {
         Self {
             context,
-            block: Block::new(&[]),
+            block,
             vars: HashMap::new(),
             result: Ok(()),
         }
