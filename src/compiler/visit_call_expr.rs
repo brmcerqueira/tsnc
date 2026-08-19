@@ -1,4 +1,4 @@
-use super::mlir_result_codegen_visitor::MLIRResultCodegenVisitor;
+use super::mlir_block_codegen_visitor::MLIRBlockCodegenVisitor;
 use super::native::native_call_resolver::native_call_resolver;
 use super::parse_type::parse_type;
 use anyhow::{Result, anyhow};
@@ -8,7 +8,7 @@ use melior::ir::{BlockLike, Location, Type, Value};
 use swc_ecma_ast::{CallExpr, Callee, Expr, ExprOrSpread, MemberProp};
 
 pub(super) fn visit_call_expr<'c>(
-    visitor: &mut MLIRResultCodegenVisitor<'c>,
+    visitor: &mut MLIRBlockCodegenVisitor<'c>,
     node: &CallExpr,
 ) -> Result<Value<'c, 'c>> {
     let args = node

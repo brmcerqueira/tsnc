@@ -1,5 +1,5 @@
 use super::build_block_and_vars::build_block_and_vars;
-use super::mlir_result_codegen_visitor::MLIRResultCodegenVisitor;
+use super::mlir_block_codegen_visitor::MLIRBlockCodegenVisitor;
 use super::parse_type::parse_type;
 use anyhow::Result;
 use melior::dialect::func::func;
@@ -10,7 +10,7 @@ use swc_ecma_ast::{FnDecl, Pat};
 use swc_ecma_visit::VisitWith;
 
 pub(super) fn visit_fn_decl<'c>(
-    visitor: &mut MLIRResultCodegenVisitor<'c>,
+    visitor: &mut MLIRBlockCodegenVisitor<'c>,
     node: &FnDecl,
 ) -> Result<()> {
     let result_type = parse_type(visitor.context.mlir_context, &node.function.return_type);
@@ -45,7 +45,7 @@ pub(super) fn visit_fn_decl<'c>(
 
     let block = region.append_block(block);
 
-    let children_visitor = &mut MLIRResultCodegenVisitor::new(&visitor.context, block, &vars);
+    let children_visitor = &mut MLIRBlockCodegenVisitor::new(&visitor.context, block, &vars);
 
     node.visit_children_with(children_visitor);
 

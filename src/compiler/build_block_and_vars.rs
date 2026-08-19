@@ -1,4 +1,4 @@
-use crate::compiler::mlir_result_codegen_visitor::Vars;
+use crate::compiler::mlir_block_codegen_visitor::Vars;
 use melior::ir::{Block, BlockLike, Location, Type};
 use std::collections::HashMap;
 

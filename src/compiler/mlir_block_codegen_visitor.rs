@@ -31,14 +31,14 @@ macro_rules! visit_void {
 
 pub(super) type Vars<'c> = HashMap<String, Value<'c, 'c>>;
 
-pub(super) struct MLIRResultCodegenVisitor<'c> {
+pub(super) struct MLIRBlockCodegenVisitor<'c> {
     pub(super) context: &'c MLIRCodegenVisitorContext<'c>,
     pub(super) block: BlockRef<'c, 'c>,
     pub(super) vars: &'c Vars<'c>,
     pub(super) result: Result<Option<Value<'c, 'c>>>,
 }
 
-impl<'c> MLIRResultCodegenVisitor<'c> {
+impl<'c> MLIRBlockCodegenVisitor<'c> {
     pub(super) fn new(
         context: &'c MLIRCodegenVisitorContext<'c>,
         block: BlockRef<'c, 'c>,
@@ -53,7 +53,7 @@ impl<'c> MLIRResultCodegenVisitor<'c> {
     }
 }
 
-impl<'c> Visit for MLIRResultCodegenVisitor<'c> {
+impl<'c> Visit for MLIRBlockCodegenVisitor<'c> {
     visit_void!(visit_fn_decl, FnDecl);
     visit_void!(visit_if_stmt, IfStmt);
     visit!(visit_bin_expr, BinExpr);

@@ -3,7 +3,7 @@ mod compiler;
 mod get_last_value;
 mod legacy;
 mod mlir_codegen_visitor;
-mod mlir_result_codegen_visitor;
+mod mlir_block_codegen_visitor;
 mod native;
 mod parse_type;
 mod visit_bin_expr;

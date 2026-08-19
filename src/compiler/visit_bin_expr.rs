@@ -1,11 +1,11 @@
-use super::mlir_result_codegen_visitor::MLIRResultCodegenVisitor;
+use super::mlir_block_codegen_visitor::MLIRBlockCodegenVisitor;
 use anyhow::{Result, anyhow};
 use melior::dialect::arith;
 use melior::ir::{BlockLike, Location, Value};
 use swc_ecma_ast::{BinExpr, BinaryOp};
 
 pub(super) fn visit_bin_expr<'c>(
-    visitor: &mut MLIRResultCodegenVisitor<'c>,
+    visitor: &mut MLIRBlockCodegenVisitor<'c>,
     node: &BinExpr,
 ) -> Result<Value<'c, 'c>> {
     let lhs = visitor.get_last_value(&node.left)?;
