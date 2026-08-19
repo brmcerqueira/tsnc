@@ -3,7 +3,6 @@ mod compiler;
 mod get_last_value;
 mod legacy;
 mod mlir_codegen_visitor;
-mod mlir_block_codegen_visitor;
 mod native;
 mod parse_type;
 mod visit_bin_expr;
@@ -12,7 +11,6 @@ mod visit_fn_decl;
 mod visit_ident;
 mod visit_if_stmt;
 mod visit_lit;
-mod visit_module;
 
 pub use compiler::Compiler;
 pub use legacy::emit::emit;

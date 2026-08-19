@@ -1,4 +1,4 @@
-use super::mlir_block_codegen_visitor::MLIRBlockCodegenVisitor;
+use super::mlir_codegen_visitor::MLIRCodegenVisitor;
 use anyhow::Result;
 use melior::dialect::arith;
 use melior::ir::attribute::IntegerAttribute;
@@ -7,19 +7,19 @@ use melior::ir::{BlockLike, Location, Value};
 use swc_ecma_ast::Number;
 
 pub(super) fn visit_number<'c>(
-    visitor: &MLIRBlockCodegenVisitor<'c>,
+    visitor: &MLIRCodegenVisitor<'c>,
     node: &Number,
 ) -> Result<Value<'c, 'c>> {
     Ok(visitor
         .block
         .append_operation(arith::constant(
-            visitor.context.mlir_context,
+            visitor.context,
             IntegerAttribute::new(
-                IntegerType::new(visitor.context.mlir_context, 64).into(),
+                IntegerType::new(visitor.context, 64).into(),
                 node.value as i64,
             )
             .into(),
-            Location::unknown(visitor.context.mlir_context),
+            Location::unknown(visitor.context),
         ))
         .result(0)?
         .into())

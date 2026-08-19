@@ -1,5 +1,5 @@
 use super::build_block_and_vars::build_block_and_vars;
-use super::mlir_block_codegen_visitor::MLIRBlockCodegenVisitor;
+use super::mlir_codegen_visitor::MLIRCodegenVisitor;
 use super::parse_type::parse_type;
 use anyhow::Result;
 use melior::dialect::func::func;
@@ -10,10 +10,10 @@ use swc_ecma_ast::{FnDecl, Pat};
 use swc_ecma_visit::VisitWith;
 
 pub(super) fn visit_fn_decl<'c>(
-    visitor: &mut MLIRBlockCodegenVisitor<'c>,
+    visitor: &mut MLIRCodegenVisitor<'c>,
     node: &FnDecl,
 ) -> Result<()> {
-    let result_type = parse_type(visitor.context.mlir_context, &node.function.return_type);
+    let result_type = parse_type(visitor.context, &node.function.return_type);
     let result_types = if result_type.is_none() {
         vec![]
     } else {
@@ -27,8 +27,8 @@ pub(super) fn visit_fn_decl<'c>(
         .filter_map(|param| match &param.pat {
             Pat::Ident(ident) => Some((
                 ident.id.sym.to_string(),
-                parse_type(visitor.context.mlir_context, &ident.type_ann).unwrap(),
-                Location::unknown(visitor.context.mlir_context),
+                parse_type(visitor.context, &ident.type_ann).unwrap(),
+                Location::unknown(visitor.context),
             )),
             _ => None,
         })
@@ -45,19 +45,18 @@ pub(super) fn visit_fn_decl<'c>(
 
     let block = region.append_block(block);
 
-    let children_visitor = &mut MLIRBlockCodegenVisitor::new(&visitor.context, block, &vars);
+    let children_visitor =
+        &mut MLIRCodegenVisitor::new(&visitor.context, visitor.functions, block, &vars);
 
     node.visit_children_with(children_visitor);
 
     visitor.block.append_operation(func(
-        visitor.context.mlir_context,
-        StringAttribute::new(visitor.context.mlir_context, node.ident.sym.as_ref()),
-        TypeAttribute::new(
-            FunctionType::new(visitor.context.mlir_context, &param_types, &result_types).into(),
-        ),
+        visitor.context,
+        StringAttribute::new(visitor.context, node.ident.sym.as_ref()),
+        TypeAttribute::new(FunctionType::new(visitor.context, &param_types, &result_types).into()),
         region,
         &[],
-        Location::unknown(visitor.context.mlir_context),
+        Location::unknown(visitor.context),
     ));
 
     //TODO: fazer uma passagem antes para carregas as funcoes
