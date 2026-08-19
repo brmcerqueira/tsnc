@@ -1,14 +1,15 @@
-use super::mlir_value_codegen_visitor::MLIRValueCodegenVisitor;
-use anyhow::{anyhow, Result};
+use super::mlir_result_codegen_visitor::MLIRResultCodegenVisitor;
+use anyhow::{Result, anyhow};
 use melior::ir::Value;
 use swc_ecma_ast::Ident;
 
 pub(super) fn visit_ident<'c>(
-    visitor: &MLIRValueCodegenVisitor<'c>,
+    visitor: &MLIRResultCodegenVisitor<'c>,
     node: &Ident,
-) -> Result<Option<Value<'c, 'c>>> {
-    Ok(Some(visitor.vars
+) -> Result<Value<'c, 'c>> {
+    Ok(visitor
+        .vars
         .get(node.sym.as_ref())
         .copied()
-        .ok_or_else(|| anyhow!("unknown identifier: {}", node.sym))?))
+        .ok_or_else(|| anyhow!("unknown identifier: {}", node.sym))?)
 }

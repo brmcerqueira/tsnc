@@ -10,11 +10,11 @@ macro_rules! native_call {
         ),* $(,)?
     ) => {
         pub fn native_call_resolver<'c>(
-            visitor: &mut MLIRValueCodegenVisitor<'c>,
+            visitor: &mut MLIRResultCodegenVisitor<'c>,
             args: &Vec<Value>,
             object_name: &str,
             function_name: &str,
-        ) -> Result<Option<Value<'c, 'c>>> {
+        ) -> Result<Value<'c, 'c>> {
             $(
                 $(
                     if object_name == $object && function_name == $function {

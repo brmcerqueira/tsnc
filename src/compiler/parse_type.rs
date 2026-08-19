@@ -1,6 +1,6 @@
 use melior::Context;
-use melior::ir::r#type::IntegerType;
 use melior::ir::Type;
+use melior::ir::r#type::IntegerType;
 use swc_ecma_ast::{TsKeywordTypeKind, TsType, TsTypeAnn};
 
 pub(super) fn parse_type<'c>(

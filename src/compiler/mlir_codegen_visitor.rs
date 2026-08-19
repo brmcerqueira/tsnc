@@ -1,8 +1,8 @@
 use super::visit_module::visit_module;
-use crate::visit;
+use crate::visit_void;
 use anyhow::Result;
 use melior::Context;
-use melior::ir::{Location, Module as MLIRModule};
+use melior::ir::{Location, Module as MLIRModule, Value};
 use std::collections::HashMap;
 use swc_ecma_ast::{FnDecl, Module};
 use swc_ecma_visit::Visit;
@@ -26,7 +26,7 @@ impl<'c> MLIRCodegenVisitorContext<'c> {
 pub(super) struct MLIRCodegenVisitor<'c> {
     pub(super) context: MLIRCodegenVisitorContext<'c>,
     pub(super) mlir_module: MLIRModule<'c>,
-    pub(super) result: Result<()>,
+    pub(super) result: Result<Option<Value<'c, 'c>>>,
 }
 
 impl<'c> MLIRCodegenVisitor<'c> {
@@ -34,11 +34,11 @@ impl<'c> MLIRCodegenVisitor<'c> {
         Self {
             context: MLIRCodegenVisitorContext::new(context, HashMap::new()),
             mlir_module: MLIRModule::new(Location::unknown(context)),
-            result: Ok(()),
+            result: Ok(None),
         }
     }
 }
 
 impl<'c> Visit for MLIRCodegenVisitor<'c> {
-    visit!(visit_module, Module);
+    visit_void!(visit_module, Module);
 }

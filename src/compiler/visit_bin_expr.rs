@@ -1,13 +1,13 @@
-use super::mlir_value_codegen_visitor::MLIRValueCodegenVisitor;
+use super::mlir_result_codegen_visitor::MLIRResultCodegenVisitor;
 use anyhow::{Result, anyhow};
 use melior::dialect::arith;
 use melior::ir::{BlockLike, Location, Value};
 use swc_ecma_ast::{BinExpr, BinaryOp};
 
 pub(super) fn visit_bin_expr<'c>(
-    visitor: &mut MLIRValueCodegenVisitor<'c>,
+    visitor: &mut MLIRResultCodegenVisitor<'c>,
     node: &BinExpr,
-) -> Result<Option<Value<'c, 'c>>> {
+) -> Result<Value<'c, 'c>> {
     let lhs = visitor.get_last_value(&node.left)?;
 
     let rhs = visitor.get_last_value(&node.right)?;
@@ -65,7 +65,5 @@ pub(super) fn visit_bin_expr<'c>(
         _ => return Err(anyhow!("unsupported binary operator: {:?}", node.op)),
     };
 
-    Ok(Some(
-        visitor.block.append_operation(operation).result(0)?.into(),
-    ))
+    Ok(visitor.block.append_operation(operation).result(0)?.into())
 }

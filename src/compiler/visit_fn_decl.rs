@@ -1,7 +1,6 @@
-use super::mlir_value_codegen_visitor::MLIRValueCodegenVisitor;
-use super::mlir_void_codegen_visitor::MLIRVoidCodegenVisitor;
+use super::build_block_and_vars::build_block_and_vars;
+use super::mlir_result_codegen_visitor::MLIRResultCodegenVisitor;
 use super::parse_type::parse_type;
-use crate::compiler::mlir_result_codegen_visitor::build_block_and_vars;
 use anyhow::Result;
 use melior::dialect::func::func;
 use melior::ir::attribute::{StringAttribute, TypeAttribute};
@@ -11,7 +10,7 @@ use swc_ecma_ast::{FnDecl, Pat};
 use swc_ecma_visit::VisitWith;
 
 pub(super) fn visit_fn_decl<'c>(
-    visitor: &mut MLIRVoidCodegenVisitor<'c>,
+    visitor: &mut MLIRResultCodegenVisitor<'c>,
     node: &FnDecl,
 ) -> Result<()> {
     let result_type = parse_type(visitor.context.mlir_context, &node.function.return_type);
@@ -46,10 +45,9 @@ pub(super) fn visit_fn_decl<'c>(
 
     let block = region.append_block(block);
 
-    let mlir_value_codegen_visitor =
-        &mut MLIRValueCodegenVisitor::new(&visitor.context, block, &vars);
+    let children_visitor = &mut MLIRResultCodegenVisitor::new(&visitor.context, block, &vars);
 
-    node.visit_children_with(mlir_value_codegen_visitor);
+    node.visit_children_with(children_visitor);
 
     visitor.block.append_operation(func(
         visitor.context.mlir_context,

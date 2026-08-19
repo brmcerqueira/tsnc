@@ -1,11 +1,11 @@
 use anyhow::{Result, anyhow};
 use melior::ir::Value;
-use crate::compiler::mlir_value_codegen_visitor::MLIRValueCodegenVisitor;
+use crate::compiler::mlir_result_codegen_visitor::MLIRResultCodegenVisitor;
 
 pub(super) fn call_console_log<'c>(
-    visitor: &mut MLIRValueCodegenVisitor<'c>,
+    visitor: &mut MLIRResultCodegenVisitor<'c>,
     args: &Vec<Value>,
-) -> Result<Option<Value<'c, 'c>>> {
+) -> Result<Value<'c, 'c>> {
     if args.len() != 1 {
         return Err(anyhow!("console.log expects exactly one argument"));
     }

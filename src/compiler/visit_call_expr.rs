@@ -1,4 +1,4 @@
-use super::mlir_value_codegen_visitor::MLIRValueCodegenVisitor;
+use super::mlir_result_codegen_visitor::MLIRResultCodegenVisitor;
 use super::native::native_call_resolver::native_call_resolver;
 use super::parse_type::parse_type;
 use anyhow::{Result, anyhow};
@@ -8,9 +8,9 @@ use melior::ir::{BlockLike, Location, Type, Value};
 use swc_ecma_ast::{CallExpr, Callee, Expr, ExprOrSpread, MemberProp};
 
 pub(super) fn visit_call_expr<'c>(
-    visitor: &mut MLIRValueCodegenVisitor<'c>,
+    visitor: &mut MLIRResultCodegenVisitor<'c>,
     node: &CallExpr,
-) -> Result<Option<Value<'c, 'c>>> {
+) -> Result<Value<'c, 'c>> {
     let args = node
         .args
         .iter()
@@ -47,19 +47,17 @@ pub(super) fn visit_call_expr<'c>(
                     .into_iter()
                     .collect();
 
-                Ok(Some(
-                    visitor
-                        .block
-                        .append_operation(func::call(
-                            visitor.context.mlir_context,
-                            FlatSymbolRefAttribute::new(visitor.context.mlir_context, name),
-                            &args,
-                            &result_types,
-                            Location::unknown(visitor.context.mlir_context),
-                        ))
-                        .result(0)?
-                        .into(),
-                ))
+                Ok(visitor
+                    .block
+                    .append_operation(func::call(
+                        visitor.context.mlir_context,
+                        FlatSymbolRefAttribute::new(visitor.context.mlir_context, name),
+                        &args,
+                        &result_types,
+                        Location::unknown(visitor.context.mlir_context),
+                    ))
+                    .result(0)?
+                    .into())
             }
             _ => Err(anyhow!("unsupported callee expression")),
         },
