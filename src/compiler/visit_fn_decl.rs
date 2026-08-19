@@ -47,7 +47,7 @@ pub(super) fn visit_fn_decl<'c>(
     let block = region.append_block(block);
 
     let mlir_value_codegen_visitor =
-        &mut MLIRValueCodegenVisitor::new(&visitor.context, block, vars);
+        &mut MLIRValueCodegenVisitor::new(&visitor.context, block, &vars);
 
     node.visit_children_with(mlir_value_codegen_visitor);
 

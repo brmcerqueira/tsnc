@@ -17,7 +17,7 @@ pub(super) type Vars<'c> = HashMap<String, Value<'c, 'c>>;
 pub(super) struct MLIRResultCodegenVisitor<'c, T> {
     pub(super) context: &'c MLIRCodegenVisitorContext<'c>,
     pub(super) block: BlockRef<'c, 'c>,
-    pub(super) vars: Vars<'c>,
+    pub(super) vars: &'c Vars<'c>,
     pub(super) result: Result<T>,
 }
 

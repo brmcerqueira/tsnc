@@ -15,7 +15,7 @@ impl<'c> MLIRValueCodegenVisitor<'c> {
     pub(super) fn new(
         context: &'c MLIRCodegenVisitorContext<'c>,
         block: BlockRef<'c, 'c>,
-        vars: Vars<'c>,
+        vars: &'c Vars<'c>,
     ) -> Self {
         Self {
             context,

@@ -13,6 +13,7 @@ mod mlir_void_codegen_visitor;
 mod visit_module;
 mod mlir_result_codegen_visitor;
 mod mlir_codegen_visitor;
+mod visit_if_stmt;
 
 pub use legacy::emit::emit;
 pub use compiler::Compiler;
