@@ -18,6 +18,21 @@ macro_rules! visit {
     ($method:ident, $node_type:ty) => {
         fn $method(&mut self, node: &$node_type) {
             self.result = $method(self, node)
+                .map(|v| Ok(v))
+                //.unwrap_or_else(|err| panic!("{:?}", err));
+                .unwrap_or_else(|err| {
+                    println!("{err}");
+                    Err(err)
+                });
+        }
+    };
+}
+
+#[macro_export]
+macro_rules! visit_value {
+    ($method:ident, $node_type:ty) => {
+        fn $method(&mut self, node: &$node_type) {
+            self.result = $method(self, node)
                 .map(|v| Ok(Some(v)))
                 //.unwrap_or_else(|err| panic!("{:?}", err));
                 .unwrap_or_else(|err| {
@@ -91,8 +106,8 @@ impl<'c> Visit for MLIRCodegenVisitor<'c> {
     visit_void!(visit_fn_decl, FnDecl);
     visit_void!(visit_return_stmt, ReturnStmt);
     visit_void!(visit_if_stmt, IfStmt);
-    visit!(visit_bin_expr, BinExpr);
-    visit!(visit_call_expr, CallExpr);
+    visit_value!(visit_bin_expr, BinExpr);
+    visit_value!(visit_call_expr, CallExpr);
     visit!(visit_ident, Ident);
-    visit!(visit_number, Number);
+    visit_value!(visit_number, Number);
 }
