@@ -2,7 +2,7 @@ use super::mlir_codegen_visitor::{Command, ControlContext, MLIRCodegenVisitor};
 use anyhow::Result;
 use melior::dialect::cf;
 use melior::dialect::func::r#return;
-use melior::ir::{Block, Location};
+use melior::ir::{Block, Location, RegionLike};
 use swc_ecma_ast::{IfStmt, Stmt};
 use swc_ecma_visit::VisitWith;
 
@@ -21,11 +21,13 @@ pub(super) fn visit_if_stmt<'c>(visitor: &mut MLIRCodegenVisitor<'c>, node: &IfS
         Block::new(&[])
     };
 
+    let region = visitor.block.parent_region().unwrap();
+
     let operation = visitor.block.append_operation(cf::cond_br(
         visitor.context,
         condition,
-        &block,
-        &else_block,
+        &region.append_block(block),
+        &region.append_block(else_block),
         &[],
         &[],
         Location::unknown(visitor.context),
