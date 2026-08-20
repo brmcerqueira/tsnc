@@ -1,9 +1,9 @@
 use super::functions_visitor::FunctionsVisitor;
 use super::mlir_codegen_visitor::{ControlContext, MLIRCodegenVisitor};
 use anyhow::{Result, anyhow};
-use melior::dialect::DialectRegistry;
-use melior::dialect::func::func;
-use melior::ir::attribute::{StringAttribute, TypeAttribute};
+use melior::dialect::func::{func, r#return};
+use melior::dialect::{DialectRegistry, arith};
+use melior::ir::attribute::{IntegerAttribute, StringAttribute, TypeAttribute};
 use melior::ir::operation::OperationLike;
 use melior::ir::r#type::{FunctionType, IntegerType};
 use melior::ir::{Block, BlockLike, Location, Module as MLIRModule, Region, RegionLike};
@@ -54,6 +54,18 @@ impl Compiler {
             &mlir_module.body(),
             &HashMap::new(),
             ControlContext::Module,
+        ));
+
+        block.append_operation(r#return(
+            &[block
+                .append_operation(arith::constant(
+                    &self.context,
+                    IntegerAttribute::new(IntegerType::new(&self.context, 32).into(), 0).into(),
+                    Location::unknown(&self.context),
+                ))
+                .result(0)?
+                .into()],
+            Location::unknown(&self.context),
         ));
 
         mlir_module.body().append_operation(func(
