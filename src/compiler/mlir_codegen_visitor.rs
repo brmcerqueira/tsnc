@@ -8,7 +8,7 @@ use crate::compiler::visit_lit::visit_number;
 use crate::compiler::visit_return_stmt::visit_return_stmt;
 use anyhow::Result;
 use melior::Context;
-use melior::ir::{BlockLike, BlockRef, Value};
+use melior::ir::{BlockLike, Value};
 use std::collections::{HashMap, HashSet};
 use swc_ecma_ast::{BinExpr, CallExpr, FnDecl, Ident, IfStmt, Number, ReturnStmt};
 use swc_ecma_visit::Visit;
@@ -17,7 +17,9 @@ use swc_ecma_visit::Visit;
 macro_rules! visit {
     ($method:ident, $node_type:ty) => {
         fn $method(&mut self, node: &$node_type) {
-            self.result = $method(self, node).map(|r| Some(r));
+            self.result = $method(self, node)
+                .map(|v| Ok(Some(v)))
+                .unwrap_or_else(|err| panic!("{:?}", err));
         }
     };
 }
@@ -26,7 +28,9 @@ macro_rules! visit {
 macro_rules! visit_void {
     ($method:ident, $node_type:ty) => {
         fn $method(&mut self, node: &$node_type) {
-            self.result = $method(self, node).map(|_| None);
+            self.result = $method(self, node)
+                .map(|_| Ok(None))
+                .unwrap_or_else(|err| panic!("{:?}", err));
         }
     };
 }
