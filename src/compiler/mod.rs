@@ -11,6 +11,7 @@ mod visit_fn_decl;
 mod visit_ident;
 mod visit_if_stmt;
 mod visit_lit;
+mod functions_visitor;
 
 pub use compiler::Compiler;
 pub use legacy::emit::emit;

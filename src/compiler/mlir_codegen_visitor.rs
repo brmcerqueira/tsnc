@@ -1,3 +1,4 @@
+use super::functions_visitor::Functions;
 use crate::compiler::visit_bin_expr::visit_bin_expr;
 use crate::compiler::visit_call_expr::visit_call_expr;
 use crate::compiler::visit_fn_decl::visit_fn_decl;
@@ -29,13 +30,11 @@ macro_rules! visit_void {
     };
 }
 
-pub(super) type Functions<'c> = HashMap<String, &'c FnDecl>;
-
 pub(super) type Vars<'c> = HashMap<String, Value<'c, 'c>>;
 
 pub(super) struct MLIRCodegenVisitor<'c> {
     pub(super) context: &'c Context,
-    pub(super) functions: &'c Functions<'c>,
+    pub(super) functions: &'c Functions,
     pub(super) block: BlockRef<'c, 'c>,
     pub(super) vars: &'c Vars<'c>,
     pub(super) result: Result<Option<Value<'c, 'c>>>,
@@ -44,7 +43,7 @@ pub(super) struct MLIRCodegenVisitor<'c> {
 impl<'c> MLIRCodegenVisitor<'c> {
     pub(super) fn new(
         context: &'c Context,
-        functions: &'c Functions<'c>,
+        functions: &'c Functions,
         block: BlockRef<'c, 'c>,
         vars: &'c Vars<'c>,
     ) -> Self {

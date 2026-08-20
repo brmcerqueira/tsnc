@@ -1,3 +1,4 @@
+use super::functions_visitor::FunctionsVisitor;
 use super::mlir_codegen_visitor::MLIRCodegenVisitor;
 use anyhow::{Result, anyhow};
 use melior::dialect::DialectRegistry;
@@ -33,9 +34,13 @@ impl Compiler {
     pub fn emit(self, module: &Module, output: &Path) -> Result<()> {
         let mut mlir_module = MLIRModule::new(Location::unknown(&self.context));
 
+        let functions_visitor = &mut FunctionsVisitor::new();
+
+        module.visit_with(functions_visitor);
+
         module.visit_children_with(&mut MLIRCodegenVisitor::new(
             &self.context,
-            &HashMap::new(),
+            &functions_visitor.functions,
             mlir_module.body(),
             &HashMap::new(),
         ));

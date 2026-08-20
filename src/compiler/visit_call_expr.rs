@@ -38,9 +38,8 @@ pub(super) fn visit_call_expr<'c>(
                 let result_types: Vec<Type> = visitor
                     .functions
                     .get(name)
-                    .copied()
                     .ok_or_else(|| anyhow!("unknown function: {}", name))
-                    .map(|function| parse_type(visitor.context, &function.function.return_type))?
+                    .map(|function| parse_type(visitor.context, &function.return_type))?
                     .into_iter()
                     .collect();
 
