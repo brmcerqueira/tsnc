@@ -7,6 +7,7 @@ pub(super) fn visit_ident<'c>(
     visitor: &MLIRCodegenVisitor<'c>,
     node: &Ident,
 ) -> Result<Value<'c, 'c>> {
+    //TODO: Ver como buscar funcoes
     Ok(visitor
         .vars
         .get(node.sym.as_ref())
