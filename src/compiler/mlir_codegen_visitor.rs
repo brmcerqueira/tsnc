@@ -19,7 +19,11 @@ macro_rules! visit {
         fn $method(&mut self, node: &$node_type) {
             self.result = $method(self, node)
                 .map(|v| Ok(Some(v)))
-                .unwrap_or_else(|err| panic!("{:?}", err));
+                //.unwrap_or_else(|err| panic!("{:?}", err));
+                .unwrap_or_else(|err| {
+                    println!("{err}");
+                    Err(err)
+                });
         }
     };
 }
@@ -30,7 +34,11 @@ macro_rules! visit_void {
         fn $method(&mut self, node: &$node_type) {
             self.result = $method(self, node)
                 .map(|_| Ok(None))
-                .unwrap_or_else(|err| panic!("{:?}", err));
+                //.unwrap_or_else(|err| panic!("{:?}", err));
+                .unwrap_or_else(|err| {
+                    println!("{err}");
+                    Err(err)
+                });
         }
     };
 }
