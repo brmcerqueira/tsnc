@@ -4,6 +4,7 @@ use melior::dialect::cf;
 use melior::ir::{Block, Location, RegionLike};
 use swc_ecma_ast::{IfStmt, Stmt};
 use swc_ecma_visit::VisitWith;
+use crate::append_operation;
 
 pub(super) fn visit_if_stmt<'c>(visitor: &mut MLIRCodegenVisitor<'c>, node: &IfStmt) -> Result<()> {
     let condition = visitor.get_last_value(&node.test.as_ref())?;
@@ -18,7 +19,7 @@ pub(super) fn visit_if_stmt<'c>(visitor: &mut MLIRCodegenVisitor<'c>, node: &IfS
 
     let region = visitor.block.parent_region().unwrap();
 
-    visitor.block.append_operation(cf::cond_br(
+    append_operation!(visitor, cf::cond_br(
         visitor.context,
         condition,
         &region.append_block(block),

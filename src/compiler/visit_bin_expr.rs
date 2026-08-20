@@ -1,8 +1,9 @@
-use super::mlir_codegen_visitor::MLIRCodegenVisitor;
+use super::mlir_codegen_visitor::{ControlContext, MLIRCodegenVisitor};
 use anyhow::{Result, anyhow};
 use melior::dialect::arith;
 use melior::ir::{BlockLike, Location, Value};
 use swc_ecma_ast::{BinExpr, BinaryOp};
+use crate::append_operation;
 
 pub(super) fn visit_bin_expr<'c>(
     visitor: &mut MLIRCodegenVisitor<'c>,
@@ -65,5 +66,5 @@ pub(super) fn visit_bin_expr<'c>(
         _ => return Err(anyhow!("unsupported binary operator: {:?}", node.op)),
     };
 
-    Ok(visitor.block.append_operation(operation).result(0)?.into())
+    Ok(append_operation!(visitor, operation).result(0)?.into())
 }

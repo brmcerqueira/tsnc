@@ -1,8 +1,9 @@
-use super::mlir_codegen_visitor::MLIRCodegenVisitor;
+use super::mlir_codegen_visitor::{ControlContext, MLIRCodegenVisitor};
 use anyhow::Result;
 use melior::dialect::func::r#return;
 use melior::ir::Location;
 use swc_ecma_ast::ReturnStmt;
+use crate::append_operation;
 
 pub(super) fn visit_return_stmt<'c>(
     visitor: &mut MLIRCodegenVisitor<'c>,
@@ -16,7 +17,7 @@ pub(super) fn visit_return_stmt<'c>(
         r#return(&[], location)
     };
 
-    visitor.block.append_operation(operation);
+    append_operation!(visitor, operation);
 
     Ok(())
 }
