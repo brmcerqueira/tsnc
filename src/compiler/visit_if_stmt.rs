@@ -2,7 +2,7 @@ use super::mlir_codegen_visitor::{ControlContext, MLIRCodegenVisitor};
 use anyhow::Result;
 use melior::ir::operation::OperationBuilder;
 use melior::ir::{Block, BlockLike, Location, Region, RegionLike, Value};
-use swc_ecma_ast::IfStmt;
+use swc_ecma_ast::{IfStmt, Stmt};
 use swc_ecma_visit::VisitWith;
 
 pub(super) fn visit_if_stmt<'c>(
@@ -12,43 +12,15 @@ pub(super) fn visit_if_stmt<'c>(
     let condition = visitor.get_last_value(&node.test.as_ref())?;
 
     let mut regions: Vec<Region> = Vec::new();
-
-    let region = Region::new();
-
-    let block = Block::new(&[]);
-
-    let block = region.append_block(block);
-
+    
+    let region = region_visitor(&visitor, &node.cons);
+    
     regions.push(region);
 
-    let then_visitor = &mut MLIRCodegenVisitor::new(
-        &visitor.context,
-        visitor.functions,
-        block,
-        visitor.vars,
-        ControlContext::If,
-    );
-
-    node.cons.visit_with(then_visitor);
-
     if let Some(else_stmt) = &node.alt {
-        let region = Region::new();
-
-        let block = Block::new(&[]);
-
-        let block = region.append_block(block);
-
+        let region = region_visitor(&visitor, else_stmt);
+        
         regions.push(region);
-
-        let else_visitor = &mut MLIRCodegenVisitor::new(
-            &visitor.context,
-            visitor.functions,
-            block,
-            visitor.vars,
-            ControlContext::If,
-        );
-
-        else_stmt.visit_with(else_visitor);
     }
 
     Ok(visitor
@@ -61,4 +33,24 @@ pub(super) fn visit_if_stmt<'c>(
         )
         .result(0)?
         .into())
+}
+
+fn region_visitor<'c>(visitor: &&mut MLIRCodegenVisitor, stmt: &Box<Stmt>) -> Region<'c> {
+    let region = Region::new();
+
+    let block = Block::new(&[]);
+
+    let block = region.append_block(block);
+    
+    let region_visitor = &mut MLIRCodegenVisitor::new(
+        &visitor.context,
+        visitor.functions,
+        block,
+        visitor.vars,
+        ControlContext::If,
+    );
+
+    stmt.visit_with(region_visitor);
+
+    region
 }
