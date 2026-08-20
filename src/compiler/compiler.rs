@@ -1,5 +1,5 @@
 use super::functions_visitor::FunctionsVisitor;
-use super::mlir_codegen_visitor::MLIRCodegenVisitor;
+use super::mlir_codegen_visitor::{ControlContext, MLIRCodegenVisitor};
 use anyhow::{Result, anyhow};
 use melior::dialect::DialectRegistry;
 use melior::ir::operation::OperationLike;
@@ -43,6 +43,7 @@ impl Compiler {
             &functions_visitor.functions,
             mlir_module.body(),
             &HashMap::new(),
+            ControlContext::Module
         ));
 
         if !mlir_module.as_operation().verify() {

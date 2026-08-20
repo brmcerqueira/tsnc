@@ -1,7 +1,7 @@
 use super::build_block_and_vars::build_block_and_vars;
-use super::mlir_codegen_visitor::MLIRCodegenVisitor;
+use super::mlir_codegen_visitor::{ControlContext, MLIRCodegenVisitor};
 use super::parse_type::parse_type;
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use melior::dialect::func::{func, r#return};
 use melior::ir::attribute::{StringAttribute, TypeAttribute};
 use melior::ir::r#type::FunctionType;
@@ -48,8 +48,13 @@ pub(super) fn visit_fn_decl<'c>(visitor: &mut MLIRCodegenVisitor<'c>, node: &FnD
         block.append_operation(r#return(&[], Location::unknown(visitor.context)));
     }
 
-    let children_visitor =
-        &mut MLIRCodegenVisitor::new(&visitor.context, visitor.functions, block, &vars);
+    let children_visitor = &mut MLIRCodegenVisitor::new(
+        visitor.context,
+        visitor.functions,
+        block,
+        &vars,
+        ControlContext::Function,
+    );
 
     node.visit_children_with(children_visitor);
 

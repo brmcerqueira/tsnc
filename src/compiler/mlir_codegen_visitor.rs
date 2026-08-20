@@ -31,6 +31,13 @@ macro_rules! visit_void {
     };
 }
 
+pub(super) enum ControlContext {
+    Function,
+    If,
+    Loop,
+    Module,
+}
+
 pub(super) type Vars<'c> = HashMap<String, Value<'c, 'c>>;
 
 pub(super) struct MLIRCodegenVisitor<'c> {
@@ -38,6 +45,7 @@ pub(super) struct MLIRCodegenVisitor<'c> {
     pub(super) functions: &'c Functions,
     pub(super) block: BlockRef<'c, 'c>,
     pub(super) vars: &'c Vars<'c>,
+    pub(super) control: ControlContext,
     pub(super) result: Result<Option<Value<'c, 'c>>>,
 }
 
@@ -47,12 +55,14 @@ impl<'c> MLIRCodegenVisitor<'c> {
         functions: &'c Functions,
         block: BlockRef<'c, 'c>,
         vars: &'c Vars<'c>,
+        control: ControlContext,
     ) -> Self {
         Self {
             context,
             functions,
             block,
             vars,
+            control,
             result: Ok(None),
         }
     }

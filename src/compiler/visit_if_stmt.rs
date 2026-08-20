@@ -1,4 +1,4 @@
-use super::mlir_codegen_visitor::MLIRCodegenVisitor;
+use super::mlir_codegen_visitor::{ControlContext, MLIRCodegenVisitor};
 use anyhow::Result;
 use melior::ir::operation::OperationBuilder;
 use melior::ir::{Block, BlockLike, Location, Region, RegionLike};
@@ -18,8 +18,13 @@ pub(super) fn visit_if_stmt<'c>(visitor: &mut MLIRCodegenVisitor<'c>, node: &IfS
 
     regions.push(region);
 
-    let then_visitor =
-        &mut MLIRCodegenVisitor::new(&visitor.context, visitor.functions, block, visitor.vars);
+    let then_visitor = &mut MLIRCodegenVisitor::new(
+        &visitor.context,
+        visitor.functions,
+        block,
+        visitor.vars,
+        ControlContext::If,
+    );
 
     node.cons.visit_with(then_visitor);
 
@@ -32,8 +37,13 @@ pub(super) fn visit_if_stmt<'c>(visitor: &mut MLIRCodegenVisitor<'c>, node: &IfS
 
         regions.push(region);
 
-        let else_visitor =
-            &mut MLIRCodegenVisitor::new(&visitor.context, visitor.functions, block, visitor.vars);
+        let else_visitor = &mut MLIRCodegenVisitor::new(
+            &visitor.context,
+            visitor.functions,
+            block,
+            visitor.vars,
+            ControlContext::If,
+        );
 
         else_stmt.visit_with(else_visitor);
     }
