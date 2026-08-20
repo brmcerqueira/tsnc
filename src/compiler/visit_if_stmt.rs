@@ -1,4 +1,4 @@
-use super::mlir_codegen_visitor::{ControlContext, MLIRCodegenVisitor};
+use super::mlir_codegen_visitor::{Command, ControlContext, MLIRCodegenVisitor};
 use anyhow::Result;
 use melior::ir::operation::OperationBuilder;
 use melior::ir::{Block, BlockLike, Location, Region, RegionLike, Value};
@@ -12,14 +12,14 @@ pub(super) fn visit_if_stmt<'c>(
     let condition = visitor.get_last_value(&node.test.as_ref())?;
 
     let mut regions: Vec<Region> = Vec::new();
-    
-    let region = region_visitor(&visitor, &node.cons);
-    
+
+    let region = region_visitor(visitor, &node.cons);
+
     regions.push(region);
 
     if let Some(else_stmt) = &node.alt {
-        let region = region_visitor(&visitor, else_stmt);
-        
+        let region = region_visitor(visitor, else_stmt);
+
         regions.push(region);
     }
 
@@ -35,15 +35,15 @@ pub(super) fn visit_if_stmt<'c>(
         .into())
 }
 
-fn region_visitor<'c>(visitor: &&mut MLIRCodegenVisitor, stmt: &Box<Stmt>) -> Region<'c> {
+fn region_visitor<'c>(visitor: &mut MLIRCodegenVisitor, stmt: &Box<Stmt>) -> Region<'c> {
     let region = Region::new();
 
     let block = Block::new(&[]);
 
     let block = region.append_block(block);
-    
+
     let region_visitor = &mut MLIRCodegenVisitor::new(
-        &visitor.context,
+        visitor.context,
         visitor.functions,
         block,
         visitor.vars,
@@ -51,6 +51,14 @@ fn region_visitor<'c>(visitor: &&mut MLIRCodegenVisitor, stmt: &Box<Stmt>) -> Re
     );
 
     stmt.visit_with(region_visitor);
+
+    if let Some(command) = region_visitor.commands
+        .iter()
+        .find(|command| matches!(command, Command::IfReturn))
+        .copied()
+    {
+        region_visitor.commands.remove(&command);
+    }
 
     region
 }
