@@ -5,11 +5,12 @@ use crate::compiler::visit_fn_decl::visit_fn_decl;
 use crate::compiler::visit_ident::visit_ident;
 use crate::compiler::visit_if_stmt::visit_if_stmt;
 use crate::compiler::visit_lit::visit_number;
+use crate::compiler::visit_return_stmt::visit_return_stmt;
 use anyhow::Result;
 use melior::Context;
 use melior::ir::{BlockRef, Value};
 use std::collections::HashMap;
-use swc_ecma_ast::{BinExpr, CallExpr, FnDecl, Ident, IfStmt, Number};
+use swc_ecma_ast::{BinExpr, CallExpr, FnDecl, Ident, IfStmt, Number, ReturnStmt};
 use swc_ecma_visit::Visit;
 
 #[macro_export]
@@ -64,4 +65,5 @@ impl<'c> Visit for MLIRCodegenVisitor<'c> {
     visit!(visit_call_expr, CallExpr);
     visit!(visit_ident, Ident);
     visit!(visit_number, Number);
+    visit!(visit_return_stmt, ReturnStmt);
 }
