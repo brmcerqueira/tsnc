@@ -1,9 +1,10 @@
 use super::mlir_codegen_visitor::{ControlContext, MLIRCodegenVisitor};
+use crate::append_operation;
 use anyhow::Result;
 use melior::dialect::func::r#return;
+use melior::ir::BlockLike;
 use melior::ir::Location;
 use swc_ecma_ast::ReturnStmt;
-use crate::append_operation;
 
 pub(super) fn visit_return_stmt<'c>(
     visitor: &mut MLIRCodegenVisitor<'c>,

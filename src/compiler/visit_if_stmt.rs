@@ -1,10 +1,11 @@
 use super::mlir_codegen_visitor::{ControlContext, MLIRCodegenVisitor};
+use crate::append_operation;
 use anyhow::Result;
 use melior::dialect::cf;
+use melior::ir::BlockLike;
 use melior::ir::{Block, Location, RegionLike};
 use swc_ecma_ast::{IfStmt, Stmt};
 use swc_ecma_visit::VisitWith;
-use crate::append_operation;
 
 pub(super) fn visit_if_stmt<'c>(visitor: &mut MLIRCodegenVisitor<'c>, node: &IfStmt) -> Result<()> {
     let condition = visitor.get_last_value(&node.test.as_ref())?;
@@ -19,15 +20,18 @@ pub(super) fn visit_if_stmt<'c>(visitor: &mut MLIRCodegenVisitor<'c>, node: &IfS
 
     let region = visitor.block.parent_region().unwrap();
 
-    append_operation!(visitor, cf::cond_br(
-        visitor.context,
-        condition,
-        &region.append_block(block),
-        &region.append_block(else_block),
-        &[],
-        &[],
-        Location::unknown(visitor.context),
-    ));
+    append_operation!(
+        visitor,
+        cf::cond_br(
+            visitor.context,
+            condition,
+            &region.append_block(block),
+            &region.append_block(else_block),
+            &[],
+            &[],
+            Location::unknown(visitor.context),
+        )
+    );
 
     Ok(())
 }
