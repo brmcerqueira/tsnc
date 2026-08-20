@@ -51,7 +51,7 @@ pub(super) fn visit_fn_decl<'c>(visitor: &mut MLIRCodegenVisitor<'c>, node: &FnD
     let children_visitor = &mut MLIRCodegenVisitor::new(
         visitor.context,
         visitor.functions,
-        block,
+        &block,
         &vars,
         ControlContext::Function,
     );

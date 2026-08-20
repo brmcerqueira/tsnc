@@ -41,7 +41,7 @@ impl Compiler {
         module.visit_children_with(&mut MLIRCodegenVisitor::new(
             &self.context,
             &functions_visitor.functions,
-            mlir_module.body(),
+            &mlir_module.body(),
             &HashMap::new(),
             ControlContext::Module
         ));
