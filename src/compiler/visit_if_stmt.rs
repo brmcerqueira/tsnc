@@ -1,11 +1,14 @@
 use super::mlir_codegen_visitor::{ControlContext, MLIRCodegenVisitor};
 use anyhow::Result;
 use melior::ir::operation::OperationBuilder;
-use melior::ir::{Block, BlockLike, Location, Region, RegionLike};
+use melior::ir::{Block, BlockLike, Location, Region, RegionLike, Value};
 use swc_ecma_ast::IfStmt;
 use swc_ecma_visit::VisitWith;
 
-pub(super) fn visit_if_stmt<'c>(visitor: &mut MLIRCodegenVisitor<'c>, node: &IfStmt) -> Result<()> {
+pub(super) fn visit_if_stmt<'c>(
+    visitor: &mut MLIRCodegenVisitor<'c>,
+    node: &IfStmt,
+) -> Result<Value<'c, 'c>> {
     let condition = visitor.get_last_value(&node.test.as_ref())?;
 
     let mut regions: Vec<Region> = Vec::new();
@@ -48,12 +51,14 @@ pub(super) fn visit_if_stmt<'c>(visitor: &mut MLIRCodegenVisitor<'c>, node: &IfS
         else_stmt.visit_with(else_visitor);
     }
 
-    visitor.block.append_operation(
-        OperationBuilder::new("scf.if", Location::unknown(visitor.context))
-            .add_operands(&[condition])
-            .add_regions_vec(regions)
-            .build()?,
-    );
-
-    Ok(())
+    Ok(visitor
+        .block
+        .append_operation(
+            OperationBuilder::new("scf.if", Location::unknown(visitor.context))
+                .add_operands(&[condition])
+                .add_regions_vec(regions)
+                .build()?,
+        )
+        .result(0)?
+        .into())
 }
