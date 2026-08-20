@@ -7,7 +7,7 @@ use swc_ecma_ast::ReturnStmt;
 pub(super) fn visit_return_stmt<'c>(
     visitor: &mut MLIRCodegenVisitor<'c>,
     node: &ReturnStmt,
-) -> Result<Value<'c, 'c>> {
+) -> Result<()> {
     let location = Location::unknown(visitor.context);
 
     let operation = if let Some(arg) = &node.arg {
@@ -17,5 +17,7 @@ pub(super) fn visit_return_stmt<'c>(
         r#return(&[], location)
     };
 
-    Ok(visitor.block.append_operation(operation).result(0)?.into())
+    visitor.block.append_operation(operation);
+
+    Ok(())
 }

@@ -1,7 +1,7 @@
 use super::build_block_and_vars::build_block_and_vars;
 use super::mlir_codegen_visitor::MLIRCodegenVisitor;
 use super::parse_type::parse_type;
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use melior::dialect::func::{func, r#return};
 use melior::ir::attribute::{StringAttribute, TypeAttribute};
 use melior::ir::r#type::FunctionType;
@@ -9,13 +9,10 @@ use melior::ir::{BlockLike, Location, Region, RegionLike};
 use swc_ecma_ast::{FnDecl, Pat};
 use swc_ecma_visit::VisitWith;
 
-pub(super) fn visit_fn_decl<'c>(
-    visitor: &mut MLIRCodegenVisitor<'c>,
-    node: &FnDecl,
-) -> Result<()> {
+pub(super) fn visit_fn_decl<'c>(visitor: &mut MLIRCodegenVisitor<'c>, node: &FnDecl) -> Result<()> {
     let result_type = parse_type(visitor.context, &node.function.return_type);
     let is_void = result_type.is_none();
-    
+
     let result_types = if is_void {
         vec![]
     } else {
@@ -49,10 +46,8 @@ pub(super) fn visit_fn_decl<'c>(
 
     if is_void {
         block.append_operation(r#return(&[], Location::unknown(visitor.context)));
-    } else {
-        return Err(anyhow!("function {} missing return", node.ident.sym));
     }
-    
+
     let children_visitor =
         &mut MLIRCodegenVisitor::new(&visitor.context, visitor.functions, block, &vars);
 
@@ -66,6 +61,6 @@ pub(super) fn visit_fn_decl<'c>(
         &[],
         Location::unknown(visitor.context),
     ));
-    
+
     Ok(())
 }
