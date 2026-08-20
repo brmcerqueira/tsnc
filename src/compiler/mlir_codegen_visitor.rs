@@ -9,7 +9,7 @@ use crate::compiler::visit_return_stmt::visit_return_stmt;
 use anyhow::Result;
 use melior::Context;
 use melior::ir::{BlockLike, Value};
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
 use swc_ecma_ast::{BinExpr, CallExpr, FnDecl, Ident, IfStmt, Number, ReturnStmt};
 use swc_ecma_visit::Visit;
 
@@ -78,7 +78,6 @@ pub(super) struct MLIRCodegenVisitor<'c> {
     pub(super) block: &'c dyn BlockLike<'c, 'c>,
     pub(super) vars: &'c Vars<'c>,
     pub(super) control: ControlContext,
-    pub(super) commands: HashSet<Command>,
     pub(super) result: Result<Option<Value<'c, 'c>>>,
 }
 
@@ -96,7 +95,6 @@ impl<'c> MLIRCodegenVisitor<'c> {
             block,
             vars,
             control,
-            commands: HashSet::new(),
             result: Ok(None),
         }
     }
