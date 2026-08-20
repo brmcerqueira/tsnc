@@ -1,8 +1,8 @@
 use super::build_block_and_vars::build_block_and_vars;
 use super::mlir_codegen_visitor::MLIRCodegenVisitor;
 use super::parse_type::parse_type;
-use anyhow::Result;
-use melior::dialect::func::func;
+use anyhow::{anyhow, Result};
+use melior::dialect::func::{func, r#return};
 use melior::ir::attribute::{StringAttribute, TypeAttribute};
 use melior::ir::r#type::FunctionType;
 use melior::ir::{BlockLike, Location, Region, RegionLike};
@@ -14,7 +14,9 @@ pub(super) fn visit_fn_decl<'c>(
     node: &FnDecl,
 ) -> Result<()> {
     let result_type = parse_type(visitor.context, &node.function.return_type);
-    let result_types = if result_type.is_none() {
+    let is_void = result_type.is_none();
+    
+    let result_types = if is_void {
         vec![]
     } else {
         vec![result_type.unwrap()]
@@ -45,6 +47,12 @@ pub(super) fn visit_fn_decl<'c>(
 
     let block = region.append_block(block);
 
+    if is_void {
+        block.append_operation(r#return(&[], Location::unknown(visitor.context)));
+    } else {
+        return Err(anyhow!("function {} missing return", node.ident.sym));
+    }
+    
     let children_visitor =
         &mut MLIRCodegenVisitor::new(&visitor.context, visitor.functions, block, &vars);
 
@@ -58,9 +66,6 @@ pub(super) fn visit_fn_decl<'c>(
         &[],
         Location::unknown(visitor.context),
     ));
-
-    //TODO: fazer uma passagem antes para carregas as funcoes
-    //visitor.functions.insert(node.ident.sym.to_string(), node.clone());
-
+    
     Ok(())
 }
