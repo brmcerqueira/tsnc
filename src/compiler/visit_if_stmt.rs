@@ -37,6 +37,7 @@ fn block_visitor<'c>(visitor: &mut MLIRCodegenVisitor, stmt: &Box<Stmt>) -> Bloc
     let block_visitor = &mut MLIRCodegenVisitor::new(
         visitor.context,
         visitor.functions,
+        visitor.main_block,
         &block,
         visitor.vars,
         ControlContext::If,

@@ -8,7 +8,7 @@ use crate::compiler::visit_lit::visit_number;
 use crate::compiler::visit_return_stmt::visit_return_stmt;
 use anyhow::Result;
 use melior::Context;
-use melior::ir::{BlockLike, Value};
+use melior::ir::{Block, BlockLike, BlockRef, Value};
 use std::collections::HashMap;
 use swc_ecma_ast::{BinExpr, CallExpr, FnDecl, Ident, IfStmt, Number, ReturnStmt};
 use swc_ecma_visit::Visit;
@@ -75,6 +75,7 @@ pub(super) type Vars<'c> = HashMap<String, Value<'c, 'c>>;
 pub(super) struct MLIRCodegenVisitor<'c> {
     pub(super) context: &'c Context,
     pub(super) functions: &'c Functions,
+    pub(super) main_block: BlockRef<'c, 'c>,
     pub(super) block: &'c dyn BlockLike<'c, 'c>,
     pub(super) vars: &'c Vars<'c>,
     pub(super) control: ControlContext,
@@ -85,6 +86,7 @@ impl<'c> MLIRCodegenVisitor<'c> {
     pub(super) fn new(
         context: &'c Context,
         functions: &'c Functions,
+        main_block: BlockRef<'c, 'c>,
         block: &'c dyn BlockLike<'c, 'c>,
         vars: &'c Vars<'c>,
         control: ControlContext,
@@ -92,6 +94,7 @@ impl<'c> MLIRCodegenVisitor<'c> {
         Self {
             context,
             functions,
+            main_block,
             block,
             vars,
             control,

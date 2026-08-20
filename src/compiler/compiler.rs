@@ -2,8 +2,11 @@ use super::functions_visitor::FunctionsVisitor;
 use super::mlir_codegen_visitor::{ControlContext, MLIRCodegenVisitor};
 use anyhow::{Result, anyhow};
 use melior::dialect::DialectRegistry;
+use melior::dialect::func::func;
+use melior::ir::attribute::{StringAttribute, TypeAttribute};
 use melior::ir::operation::OperationLike;
-use melior::ir::{Location, Module as MLIRModule};
+use melior::ir::r#type::{FunctionType, IntegerType};
+use melior::ir::{Block, BlockLike, Location, Module as MLIRModule, Region, RegionLike};
 use melior::pass::PassManager;
 use melior::utility::{register_all_dialects, register_all_llvm_translations};
 use melior::{Context, ExecutionEngine, pass};
@@ -38,12 +41,35 @@ impl Compiler {
 
         module.visit_with(functions_visitor);
 
+        let block = Block::new(&[]);
+
+        let region = Region::new();
+
+        let block = region.append_block(block);
+
         module.visit_children_with(&mut MLIRCodegenVisitor::new(
             &self.context,
             &functions_visitor.functions,
+            block,
             &mlir_module.body(),
             &HashMap::new(),
-            ControlContext::Module
+            ControlContext::Module,
+        ));
+
+        mlir_module.body().append_operation(func(
+            &self.context,
+            StringAttribute::new(&self.context, "main"),
+            TypeAttribute::new(
+                FunctionType::new(
+                    &self.context,
+                    &[],
+                    &[IntegerType::new(&self.context, 32).into()],
+                )
+                .into(),
+            ),
+            region,
+            &[],
+            Location::unknown(&self.context),
         ));
 
         if !mlir_module.as_operation().verify() {
