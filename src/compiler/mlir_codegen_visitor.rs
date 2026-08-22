@@ -6,14 +6,14 @@ use crate::compiler::visit_ident::visit_ident;
 use crate::compiler::visit_if_stmt::visit_if_stmt;
 use crate::compiler::visit_lit::visit_number;
 use crate::compiler::visit_return_stmt::visit_return_stmt;
+use crate::compiler::visit_var_declarator::visit_var_declarator;
 use anyhow::Result;
 use melior::Context;
 use melior::ir::{BlockLike, BlockRef, Value};
 use std::cmp::PartialEq;
 use std::collections::HashMap;
-use swc_ecma_ast::{AssignExpr, BinExpr, CallExpr, FnDecl, Ident, IfStmt, Number, ReturnStmt, VarDeclarator};
+use swc_ecma_ast::{BinExpr, CallExpr, FnDecl, Ident, IfStmt, Number, ReturnStmt, VarDeclarator};
 use swc_ecma_visit::Visit;
-use crate::compiler::visit_var_declarator::visit_var_declarator;
 
 #[macro_export]
 macro_rules! visit {

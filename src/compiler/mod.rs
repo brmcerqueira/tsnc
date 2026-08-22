@@ -1,7 +1,6 @@
 mod build_block_and_vars;
 mod compiler;
 mod get_last_value;
-mod legacy;
 mod mlir_codegen_visitor;
 mod native;
 mod parse_type;
@@ -17,4 +16,3 @@ mod module_extends;
 mod visit_var_declarator;
 
 pub use compiler::Compiler;
-pub use legacy::emit::emit;

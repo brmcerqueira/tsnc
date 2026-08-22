@@ -11,7 +11,7 @@ use melior::pass::conversion::{
     create_reconcile_unrealized_casts,
 };
 use melior::utility::{register_all_dialects, register_all_llvm_translations};
-use melior::{Context, ExecutionEngine, pass};
+use melior::{Context, ExecutionEngine};
 use std::collections::HashMap;
 use std::fs::remove_file;
 use std::path::Path;
