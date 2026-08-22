@@ -8,7 +8,7 @@ use crate::compiler::visit_lit::visit_number;
 use crate::compiler::visit_return_stmt::visit_return_stmt;
 use anyhow::Result;
 use melior::Context;
-use melior::ir::{Block, BlockLike, BlockRef, Operation, OperationRef, Value};
+use melior::ir::{BlockLike, BlockRef, Value};
 use std::cmp::PartialEq;
 use std::collections::HashMap;
 use swc_ecma_ast::{BinExpr, CallExpr, FnDecl, Ident, IfStmt, Number, ReturnStmt};
@@ -62,7 +62,7 @@ macro_rules! visit_void {
 #[macro_export]
 macro_rules! append_operation {
     ($visitor:ident, $operation:expr) => {
-         if $visitor.control == ControlContext::Module {
+        if $visitor.control == ControlContext::Module {
             $visitor.main_block.append_operation($operation)
         } else {
             $visitor.block.append_operation($operation)
