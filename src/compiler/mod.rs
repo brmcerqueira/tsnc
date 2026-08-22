@@ -14,6 +14,7 @@ mod visit_lit;
 mod functions_visitor;
 mod visit_return_stmt;
 mod module_extends;
+mod visit_assign_expr;
 
 pub use compiler::Compiler;
 pub use legacy::emit::emit;

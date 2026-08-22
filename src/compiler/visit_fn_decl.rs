@@ -38,7 +38,7 @@ pub(super) fn visit_fn_decl<'c>(visitor: &mut MLIRCodegenVisitor<'c>, node: &FnD
         .map(|(_, mlir_type, _)| *mlir_type)
         .collect();
 
-    let (block, vars) = build_block_and_vars(&*arguments);
+    let (block, mut vars) = build_block_and_vars(&*arguments);
 
     let region = Region::new();
 
@@ -53,7 +53,7 @@ pub(super) fn visit_fn_decl<'c>(visitor: &mut MLIRCodegenVisitor<'c>, node: &FnD
         visitor.functions,
         visitor.main_block,
         &block,
-        &vars,
+        &mut vars,
         ControlContext::Function,
     );
 

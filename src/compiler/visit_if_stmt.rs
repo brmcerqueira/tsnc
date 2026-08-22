@@ -39,12 +39,13 @@ pub(super) fn visit_if_stmt<'c>(visitor: &mut MLIRCodegenVisitor<'c>, node: &IfS
 fn block_visitor<'c>(visitor: &mut MLIRCodegenVisitor, stmt: &Box<Stmt>) -> Block<'c> {
     let block = Block::new(&[]);
 
+    let mut vars = visitor.vars.clone();
     let block_visitor = &mut MLIRCodegenVisitor::new(
         visitor.context,
         visitor.functions,
         visitor.main_block,
         &block,
-        visitor.vars,
+        &mut vars,
         ControlContext::If,
     );
 

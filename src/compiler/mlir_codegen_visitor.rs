@@ -11,8 +11,9 @@ use melior::Context;
 use melior::ir::{BlockLike, BlockRef, Value};
 use std::cmp::PartialEq;
 use std::collections::HashMap;
-use swc_ecma_ast::{BinExpr, CallExpr, FnDecl, Ident, IfStmt, Number, ReturnStmt};
+use swc_ecma_ast::{AssignExpr, BinExpr, CallExpr, FnDecl, Ident, IfStmt, Number, ReturnStmt};
 use swc_ecma_visit::Visit;
+use crate::compiler::visit_assign_expr::visit_assign_expr;
 
 #[macro_export]
 macro_rules! visit {
@@ -85,7 +86,7 @@ pub(super) struct MLIRCodegenVisitor<'c> {
     pub(super) functions: &'c Functions,
     pub(super) main_block: BlockRef<'c, 'c>,
     pub(super) block: &'c dyn BlockLike<'c, 'c>,
-    pub(super) vars: &'c Vars<'c>,
+    pub(super) vars: &'c mut Vars<'c>,
     pub(super) control: ControlContext,
     pub(super) result: Result<Option<Value<'c, 'c>>>,
 }
@@ -96,7 +97,7 @@ impl<'c> MLIRCodegenVisitor<'c> {
         functions: &'c Functions,
         main_block: BlockRef<'c, 'c>,
         block: &'c dyn BlockLike<'c, 'c>,
-        vars: &'c Vars<'c>,
+        vars: &'c mut Vars<'c>,
         control: ControlContext,
     ) -> Self {
         Self {
@@ -119,4 +120,5 @@ impl<'c> Visit for MLIRCodegenVisitor<'c> {
     visit_value!(visit_call_expr, CallExpr);
     visit!(visit_ident, Ident);
     visit_value!(visit_number, Number);
+    visit_void!(visit_assign_expr, AssignExpr);
 }

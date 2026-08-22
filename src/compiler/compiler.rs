@@ -56,7 +56,7 @@ impl Compiler {
             &functions_visitor.functions,
             block,
             module_block,
-            &HashMap::new(),
+            &mut HashMap::new(),
             ControlContext::Module,
         ));
 
