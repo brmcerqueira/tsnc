@@ -7,4 +7,4 @@ function max(a: number, b: number): number {
 }
 
 let result = max(10, 20);
-//console.log(result + 100);
+console.log(result + 100);

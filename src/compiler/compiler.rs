@@ -104,6 +104,7 @@ impl Compiler {
 
         let status = Command::new("cc")
             .arg(&obj_path)
+            .arg("runtime/target/debug/libruntime.a")
             .arg("-o")
             .arg(output)
             .status()?;
