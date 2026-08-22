@@ -1,10 +1,10 @@
-use anyhow::{Result, anyhow};
+use anyhow::Result;
 use melior::Context;
 use melior::dialect::arith;
 use melior::dialect::func::{func, r#return};
 use melior::ir::attribute::{IntegerAttribute, StringAttribute, TypeAttribute};
 use melior::ir::r#type::{FunctionType, IntegerType};
-use melior::ir::{BlockLike, BlockRef, Identifier, Location, Region, Type};
+use melior::ir::{BlockLike, BlockRef, Identifier, Location, Region};
 
 pub(super) fn module_extends(
     context: &Context,
@@ -35,13 +35,12 @@ pub(super) fn module_extends(
         Location::unknown(context),
     ));
 
-    let ptr_type =
-        Type::parse(&context, "!llvm.ptr").ok_or_else(|| anyhow!("failed to create !llvm.ptr"))?;
-
     module_block.append_operation(func(
         &context,
         StringAttribute::new(&context, "log"),
-        TypeAttribute::new(FunctionType::new(&context, &[ptr_type], &[]).into()),
+        TypeAttribute::new(
+            FunctionType::new(&context, &[IntegerType::new(context, 64).into()], &[]).into(),
+        ),
         Region::new(),
         &[(
             Identifier::new(&context, "sym_visibility"),
