@@ -12,12 +12,6 @@ pub(super) fn visit_call_expr<'c>(
     visitor: &mut MLIRCodegenVisitor<'c>,
     node: &CallExpr,
 ) -> Result<Option<Value<'c, 'c>>> {
-    let args = node
-        .args
-        .iter()
-        .map(|ExprOrSpread { expr, .. }| visitor.get_last_value(expr))
-        .collect::<Result<Vec<_>>>()?;
-
     match &node.callee {
         Callee::Expr(callee_expr) => match callee_expr.as_ref() {
             Expr::Member(member) => {
@@ -37,13 +31,20 @@ pub(super) fn visit_call_expr<'c>(
 
                 native_call_resolver(
                     visitor,
-                    &args,
+                    &node.args,
                     obj,
                     prop,
                 )
             }
             Expr::Ident(ident) => {
                 let name = ident.sym.as_ref();
+
+                let args = node
+                    .args
+                    .iter()
+                    .map(|ExprOrSpread { expr, .. }| visitor.get_last_value(expr))
+                    .collect::<Result<Vec<_>>>()?;
+                
                 let result_types: Vec<Type> = visitor
                     .functions
                     .get(name)

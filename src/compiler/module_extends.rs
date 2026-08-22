@@ -1,10 +1,10 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use melior::Context;
 use melior::dialect::arith;
 use melior::dialect::func::{func, r#return};
 use melior::ir::attribute::{IntegerAttribute, StringAttribute, TypeAttribute};
 use melior::ir::r#type::{FunctionType, IntegerType};
-use melior::ir::{BlockLike, BlockRef, Identifier, Location, Region};
+use melior::ir::{BlockLike, BlockRef, Identifier, Location, Region, Type};
 
 pub(super) fn module_extends(
     context: &Context,
@@ -35,11 +35,33 @@ pub(super) fn module_extends(
         Location::unknown(context),
     ));
 
+    let pointer_type = Type::parse(&context, "!llvm.ptr")
+        .ok_or_else(|| anyhow!("failed to create !llvm.ptr"))?;
+
+    module_block.append_operation(func(
+        &context,
+        StringAttribute::new(&context, "i64_to_string"),
+        TypeAttribute::new(
+            FunctionType::new(&context, &[IntegerType::new(context, 64).into()], &[pointer_type]).into(),
+        ),
+        Region::new(),
+        &[(
+            Identifier::new(&context, "sym_visibility"),
+            StringAttribute::new(&context, "private").into(),
+        )],
+        Location::unknown(context),
+    ));
+
     module_block.append_operation(func(
         &context,
         StringAttribute::new(&context, "log"),
         TypeAttribute::new(
-            FunctionType::new(&context, &[IntegerType::new(context, 64).into()], &[]).into(),
+            FunctionType::new(
+                &context,
+                &[pointer_type],
+                &[],
+            )
+            .into(),
         ),
         Region::new(),
         &[(

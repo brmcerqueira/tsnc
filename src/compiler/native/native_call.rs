@@ -11,7 +11,7 @@ macro_rules! native_call {
     ) => {
         pub fn native_call_resolver<'c>(
             visitor: &mut MLIRCodegenVisitor<'c>,
-            args: &Vec<Value<'c, 'c>>,
+            args: &Vec<ExprOrSpread>,
             object_name: &str,
             function_name: &str,
         ) -> Result<Option<Value<'c, 'c>>> {
