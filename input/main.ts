@@ -5,6 +5,6 @@ function max(a: number, b: number): number {
         return b;
     }
 }
-
-let result = max(10, 20);
+console.log("Teste");
+let result = max(10, 22);
 console.log(result + 100);

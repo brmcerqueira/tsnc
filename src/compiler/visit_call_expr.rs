@@ -21,18 +21,26 @@ pub(super) fn visit_call_expr<'c>(
     match &node.callee {
         Callee::Expr(callee_expr) => match callee_expr.as_ref() {
             Expr::Member(member) => {
-                if let (Expr::Ident(obj), MemberProp::Ident(prop)) =
-                    (member.obj.as_ref(), &member.prop)
-                {
-                    return native_call_resolver(
-                        visitor,
-                        &args,
-                        obj.sym.as_ref(),
-                        prop.sym.as_ref(),
-                    );
-                }
+                let obj = match member.obj.as_ref() {
+                    Expr::Ident(obj) => obj.sym.as_ref(),
+                    _ => {
+                        return Err(anyhow!("unsupported member object"));
+                    }
+                };
 
-                Err(anyhow!("unsupported method call"))
+                let prop = match &member.prop {
+                    MemberProp::Ident(prop) => prop.sym.as_ref(),
+                    _ => {
+                        return Err(anyhow!("unsupported member property"));
+                    }
+                };
+
+                native_call_resolver(
+                    visitor,
+                    &args,
+                    obj,
+                    prop,
+                )
             }
             Expr::Ident(ident) => {
                 let name = ident.sym.as_ref();
