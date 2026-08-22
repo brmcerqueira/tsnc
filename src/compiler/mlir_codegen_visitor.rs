@@ -117,7 +117,7 @@ impl<'c> Visit for MLIRCodegenVisitor<'c> {
     visit_void!(visit_return_stmt, ReturnStmt);
     visit_void!(visit_if_stmt, IfStmt);
     visit_value!(visit_bin_expr, BinExpr);
-    visit_value!(visit_call_expr, CallExpr);
+    visit!(visit_call_expr, CallExpr);
     visit!(visit_ident, Ident);
     visit_value!(visit_number, Number);
     visit_void!(visit_var_declarator, VarDeclarator);
