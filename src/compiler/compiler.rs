@@ -1,13 +1,15 @@
 use super::functions_visitor::FunctionsVisitor;
 use super::mlir_codegen_visitor::{ControlContext, MLIRCodegenVisitor};
+use super::module_extends::module_extends;
 use anyhow::{Result, anyhow};
-use melior::dialect::func::{func, r#return};
-use melior::dialect::{DialectRegistry, arith};
-use melior::ir::attribute::{IntegerAttribute, StringAttribute, TypeAttribute};
+use melior::dialect::DialectRegistry;
 use melior::ir::operation::OperationLike;
-use melior::ir::r#type::{FunctionType, IntegerType};
-use melior::ir::{Block, BlockLike, Location, Module as MLIRModule, Region, RegionLike};
+use melior::ir::{Block, Location, Module as MLIRModule, Region, RegionLike};
 use melior::pass::PassManager;
+use melior::pass::conversion::{
+    create_arith_to_llvm, create_control_flow_to_llvm, create_func_to_llvm,
+    create_reconcile_unrealized_casts,
+};
 use melior::utility::{register_all_dialects, register_all_llvm_translations};
 use melior::{Context, ExecutionEngine, pass};
 use std::collections::HashMap;
@@ -47,42 +49,18 @@ impl Compiler {
 
         let block = region.append_block(block);
 
+        let module_block = &mlir_module.body();
+
         module.visit_children_with(&mut MLIRCodegenVisitor::new(
             &self.context,
             &functions_visitor.functions,
             block,
-            &mlir_module.body(),
+            module_block,
             &HashMap::new(),
             ControlContext::Module,
         ));
 
-        block.append_operation(r#return(
-            &[block
-                .append_operation(arith::constant(
-                    &self.context,
-                    IntegerAttribute::new(IntegerType::new(&self.context, 32).into(), 0).into(),
-                    Location::unknown(&self.context),
-                ))
-                .result(0)?
-                .into()],
-            Location::unknown(&self.context),
-        ));
-
-        mlir_module.body().append_operation(func(
-            &self.context,
-            StringAttribute::new(&self.context, "main"),
-            TypeAttribute::new(
-                FunctionType::new(
-                    &self.context,
-                    &[],
-                    &[IntegerType::new(&self.context, 32).into()],
-                )
-                .into(),
-            ),
-            region,
-            &[],
-            Location::unknown(&self.context),
-        ));
+        module_extends(&self.context, module_block, region, &block)?;
 
         if !mlir_module.as_operation().verify() {
             return Err(anyhow!(
@@ -92,10 +70,10 @@ impl Compiler {
         }
 
         let pass_manager = PassManager::new(&self.context);
-        pass_manager.add_pass(pass::conversion::create_arith_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_control_flow_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_func_to_llvm());
-        pass_manager.add_pass(pass::conversion::create_reconcile_unrealized_casts());
+        pass_manager.add_pass(create_arith_to_llvm());
+        pass_manager.add_pass(create_control_flow_to_llvm());
+        pass_manager.add_pass(create_func_to_llvm());
+        pass_manager.add_pass(create_reconcile_unrealized_casts());
         pass_manager
             .run(&mut mlir_module)
             .map_err(|e| anyhow!("lowering failed: {e}"))?;

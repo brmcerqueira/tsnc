@@ -1,12 +1,12 @@
 use super::mlir_codegen_visitor::{ControlContext, MLIRCodegenVisitor};
 use super::native::native_call_resolver::native_call_resolver;
 use super::parse_type::parse_type;
+use crate::append_operation;
 use anyhow::{Result, anyhow};
-use melior::dialect::func;
+use melior::dialect::func::call;
 use melior::ir::attribute::FlatSymbolRefAttribute;
 use melior::ir::{BlockLike, Location, Type, Value};
 use swc_ecma_ast::{CallExpr, Callee, Expr, ExprOrSpread, MemberProp};
-use crate::append_operation;
 
 pub(super) fn visit_call_expr<'c>(
     visitor: &mut MLIRCodegenVisitor<'c>,
@@ -44,15 +44,18 @@ pub(super) fn visit_call_expr<'c>(
                     .into_iter()
                     .collect();
 
-                Ok(append_operation!(visitor, func::call(
+                Ok(append_operation!(
+                    visitor,
+                    call(
                         visitor.context,
                         FlatSymbolRefAttribute::new(visitor.context, name),
                         &args,
                         &result_types,
                         Location::unknown(visitor.context),
-                    ))
-                    .result(0)?
-                    .into())
+                    )
+                )
+                .result(0)?
+                .into())
             }
             _ => Err(anyhow!("unsupported callee expression")),
         },

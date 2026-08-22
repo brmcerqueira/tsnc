@@ -13,6 +13,7 @@ mod visit_if_stmt;
 mod visit_lit;
 mod functions_visitor;
 mod visit_return_stmt;
+mod module_extends;
 
 pub use compiler::Compiler;
 pub use legacy::emit::emit;

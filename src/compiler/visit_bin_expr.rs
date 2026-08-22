@@ -1,9 +1,9 @@
 use super::mlir_codegen_visitor::{ControlContext, MLIRCodegenVisitor};
+use crate::append_operation;
 use anyhow::{Result, anyhow};
-use melior::dialect::arith;
+use melior::dialect::arith::{CmpiPredicate, addi, cmpi, divsi, muli, remsi, subi};
 use melior::ir::{BlockLike, Location, Value};
 use swc_ecma_ast::{BinExpr, BinaryOp};
-use crate::append_operation;
 
 pub(super) fn visit_bin_expr<'c>(
     visitor: &mut MLIRCodegenVisitor<'c>,
@@ -16,53 +16,17 @@ pub(super) fn visit_bin_expr<'c>(
     let location = Location::unknown(visitor.context);
 
     let operation = match node.op {
-        BinaryOp::Add => arith::addi(lhs, rhs, location),
-        BinaryOp::Sub => arith::subi(lhs, rhs, location),
-        BinaryOp::Mul => arith::muli(lhs, rhs, location),
-        BinaryOp::Div => arith::divsi(lhs, rhs, location),
-        BinaryOp::Mod => arith::remsi(lhs, rhs, location),
-        BinaryOp::Lt => arith::cmpi(
-            visitor.context,
-            arith::CmpiPredicate::Slt,
-            lhs,
-            rhs,
-            location,
-        ),
-        BinaryOp::LtEq => arith::cmpi(
-            visitor.context,
-            arith::CmpiPredicate::Sle,
-            lhs,
-            rhs,
-            location,
-        ),
-        BinaryOp::Gt => arith::cmpi(
-            visitor.context,
-            arith::CmpiPredicate::Sgt,
-            lhs,
-            rhs,
-            location,
-        ),
-        BinaryOp::GtEq => arith::cmpi(
-            visitor.context,
-            arith::CmpiPredicate::Sge,
-            lhs,
-            rhs,
-            location,
-        ),
-        BinaryOp::EqEqEq => arith::cmpi(
-            visitor.context,
-            arith::CmpiPredicate::Eq,
-            lhs,
-            rhs,
-            location,
-        ),
-        BinaryOp::NotEqEq => arith::cmpi(
-            visitor.context,
-            arith::CmpiPredicate::Ne,
-            lhs,
-            rhs,
-            location,
-        ),
+        BinaryOp::Add => addi(lhs, rhs, location),
+        BinaryOp::Sub => subi(lhs, rhs, location),
+        BinaryOp::Mul => muli(lhs, rhs, location),
+        BinaryOp::Div => divsi(lhs, rhs, location),
+        BinaryOp::Mod => remsi(lhs, rhs, location),
+        BinaryOp::Lt => cmpi(visitor.context, CmpiPredicate::Slt, lhs, rhs, location),
+        BinaryOp::LtEq => cmpi(visitor.context, CmpiPredicate::Sle, lhs, rhs, location),
+        BinaryOp::Gt => cmpi(visitor.context, CmpiPredicate::Sgt, lhs, rhs, location),
+        BinaryOp::GtEq => cmpi(visitor.context, CmpiPredicate::Sge, lhs, rhs, location),
+        BinaryOp::EqEqEq => cmpi(visitor.context, CmpiPredicate::Eq, lhs, rhs, location),
+        BinaryOp::NotEqEq => cmpi(visitor.context, CmpiPredicate::Ne, lhs, rhs, location),
         _ => return Err(anyhow!("unsupported binary operator: {:?}", node.op)),
     };
 
